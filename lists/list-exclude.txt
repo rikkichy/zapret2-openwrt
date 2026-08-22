@@ -1,0 +1,5 @@
+# Hosts NOT blocked here that the strategy would otherwise break.
+# Hosts that are NOT blocked here and that the desync strategy actively BREAKS.
+# Measured: discordstatus.com returns 200 with zapret off, 000 with it on.
+# (Atlassian Statuspage backend does not tolerate the disorder+fake sequence.)
+discordstatus.com

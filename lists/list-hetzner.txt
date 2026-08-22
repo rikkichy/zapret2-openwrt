@@ -1,0 +1,4 @@
+# Hosts on Hetzner (AS24940) — the docs flag this ASN as subject to stricter
+# RU filtering. These need a different fake than the general profile.
+7tv.app
+7tv.io

@@ -1,0 +1,137 @@
+# custom.d script: measured DPI bypass for Discord / YouTube / X / Proton / CDNs
+# Strategy: measured-2026-08-22
+#
+# Engine: zapret2 (nfqws2). NOT compatible with zapret v1.
+#
+# USAGE: copy to $ZAPRET_BASE/init.d/openwrt/custom.d/
+#        (or init.d/sysv/custom.d/ on non-OpenWrt Linux)
+# LISTS: copy list-general.txt, list-hetzner.txt, list-exclude.txt
+#        to $ZAPRET_BASE/ipset/
+#
+# Both fake blobs used below ship with zapret2 - nothing extra to install.
+#
+# How this strategy was chosen: 1896 discovery tests plus ~1400 repeat-verified
+# tests with blockcheck2 (SCANLEVEL=force, REPEATS=5). It cleared 44 of 51
+# blocked hostnames on TLS 1.2, TLS 1.3 and QUIC alike.
+#
+#   ip_ttl=4  the fake must expire between the DPI and the server. This is the
+#             most path-specific value here - re-sweep it first if your ISP
+#             route differs from the reference connection.
+#   repeats=6 not cosmetic. At repeats=2 discord.com and googlevideo fail.
+#   host+1    required for youtubei.googleapis.com and i.ytimg.com; midsld
+#             alone is not enough.
+#   NOT tcp_md5 - on the reference path the md5 fake reaches the server and
+#             corrupts the connection. ip_ttl and badsum fool it correctly.
+
+# override any of these in the zapret2 config file
+NFQWS2_Z2B_PORTS_TCP="${NFQWS2_Z2B_PORTS_TCP:-80,443}"
+NFQWS2_Z2B_PORTS_UDP="${NFQWS2_Z2B_PORTS_UDP:-443,19294-19344,50000-65535}"
+NFQWS2_Z2B_TCP_PKT_OUT="${NFQWS2_Z2B_TCP_PKT_OUT:-20}"
+NFQWS2_Z2B_TCP_PKT_IN="${NFQWS2_Z2B_TCP_PKT_IN:-10}"
+NFQWS2_Z2B_UDP_PKT_OUT="${NFQWS2_Z2B_UDP_PKT_OUT:-8}"
+NFQWS2_Z2B_UDP_PKT_IN="${NFQWS2_Z2B_UDP_PKT_IN:-4}"
+
+Z2B_LISTS="$ZAPRET_BASE/ipset"
+Z2B_FAKE="$ZAPRET_BASE/files/fake"
+
+NFQWS2_Z2B_OPT="${NFQWS2_Z2B_OPT:-
+ --blob=quic_google:@$Z2B_FAKE/quic_initial_www_google_com.bin
+ --blob=fake_big:@$Z2B_FAKE/tls_clienthello_iana_org_bigsize.bin
+ --lua-init=fake_default_tls=tls_mod(fake_default_tls,'rnd,rndsni')
+ --filter-tcp=443 --filter-l7=tls --hostlist=$Z2B_LISTS/list-hetzner.txt --hostlist-exclude=$Z2B_LISTS/list-exclude.txt
+   --out-range=-d10 --payload=tls_client_hello
+   --lua-desync=fake:blob=fake_big:ip_ttl=4:repeats=6
+   --lua-desync=multidisorder:pos=1,host+1,midsld
+ --new
+ --filter-tcp=443 --filter-l7=tls --hostlist=$Z2B_LISTS/list-general.txt --hostlist-exclude=$Z2B_LISTS/list-exclude.txt
+   --out-range=-d10 --payload=tls_client_hello
+   --lua-desync=fake:blob=fake_default_tls:ip_ttl=4:repeats=6
+   --lua-desync=multidisorder:pos=1,host+1,midsld
+ --new
+ --filter-tcp=80 --filter-l7=http --hostlist=$Z2B_LISTS/list-general.txt --hostlist-exclude=$Z2B_LISTS/list-exclude.txt
+   --out-range=-d10 --payload=http_req
+   --lua-desync=fake:blob=fake_default_http:ip_ttl=4:repeats=4
+   --lua-desync=multisplit:pos=method+2,midsld
+ --new
+ --filter-udp=443 --filter-l7=quic --hostlist=$Z2B_LISTS/list-general.txt --hostlist-exclude=$Z2B_LISTS/list-exclude.txt
+   --payload=quic_initial
+   --lua-desync=fake:blob=quic_google:ip_ttl=4:repeats=5
+ --new
+ --filter-udp=19294-19344,50000-65535 --filter-l7=discord,stun
+   --payload=discord_ip_discovery,stun
+   --lua-desync=fake:blob=0x00000000000000000000000000000000:repeats=2}"
+
+alloc_dnum DNUM_Z2B
+alloc_qnum QNUM_Z2B
+
+zapret_custom_daemons()
+{
+	# $1 - 1 - run, 0 - stop
+
+	local opt="--qnum=$QNUM_Z2B $NFQWS2_Z2B_OPT"
+	do_nfqws $1 $DNUM_Z2B "$opt"
+}
+
+zapret_custom_firewall()
+{
+	# $1 - 1 - run, 0 - stop
+
+	local f4 f6
+	local ports_tcp=$(replace_char - : $NFQWS2_Z2B_PORTS_TCP)
+	local ports_udp=$(replace_char - : $NFQWS2_Z2B_PORTS_UDP)
+
+	[ -n "$ports_tcp" ] && {
+		[ -n "$NFQWS2_Z2B_TCP_PKT_OUT" -a "$NFQWS2_Z2B_TCP_PKT_OUT" != 0 ] && {
+			f4="-p tcp -m multiport --dports $ports_tcp $(ipt_first_packets $NFQWS2_Z2B_TCP_PKT_OUT)"
+			f6="$f4"
+			fw_nfqws_post $1 "$f4" "$f6" $QNUM_Z2B
+		}
+		[ -n "$NFQWS2_Z2B_TCP_PKT_IN" -a "$NFQWS2_Z2B_TCP_PKT_IN" != 0 ] && {
+			f4="-p tcp -m multiport --sports $ports_tcp $(ipt_first_packets $NFQWS2_Z2B_TCP_PKT_IN)"
+			f6="$f4"
+			fw_nfqws_pre $1 "$f4" "$f6" $QNUM_Z2B
+		}
+	}
+	[ -n "$ports_udp" ] && {
+		[ -n "$NFQWS2_Z2B_UDP_PKT_OUT" -a "$NFQWS2_Z2B_UDP_PKT_OUT" != 0 ] && {
+			f4="-p udp -m multiport --dports $ports_udp $(ipt_first_packets $NFQWS2_Z2B_UDP_PKT_OUT)"
+			f6="$f4"
+			fw_nfqws_post $1 "$f4" "$f6" $QNUM_Z2B
+		}
+		[ -n "$NFQWS2_Z2B_UDP_PKT_IN" -a "$NFQWS2_Z2B_UDP_PKT_IN" != 0 ] && {
+			f4="-p udp -m multiport --sports $ports_udp $(ipt_first_packets $NFQWS2_Z2B_UDP_PKT_IN)"
+			f6="$f4"
+			fw_nfqws_pre $1 "$f4" "$f6" $QNUM_Z2B
+		}
+	}
+}
+
+zapret_custom_firewall_nft()
+{
+	# stop logic is not required
+	# NOTE: zapret2's nft_fw_nfqws_* take (filter4, filter6, qnum) - no on/off
+	#       argument, unlike the zapret v1 helpers.
+
+	local f
+
+	[ -n "$NFQWS2_Z2B_PORTS_TCP" ] && {
+		[ -n "$NFQWS2_Z2B_TCP_PKT_OUT" -a "$NFQWS2_Z2B_TCP_PKT_OUT" != 0 ] && {
+			f="tcp dport {$NFQWS2_Z2B_PORTS_TCP} $(nft_first_packets $NFQWS2_Z2B_TCP_PKT_OUT)"
+			nft_fw_nfqws_post "$f" "$f" $QNUM_Z2B
+		}
+		[ -n "$NFQWS2_Z2B_TCP_PKT_IN" -a "$NFQWS2_Z2B_TCP_PKT_IN" != 0 ] && {
+			f="tcp sport {$NFQWS2_Z2B_PORTS_TCP} $(nft_first_packets $NFQWS2_Z2B_TCP_PKT_IN)"
+			nft_fw_nfqws_pre "$f" "$f" $QNUM_Z2B
+		}
+	}
+	[ -n "$NFQWS2_Z2B_PORTS_UDP" ] && {
+		[ -n "$NFQWS2_Z2B_UDP_PKT_OUT" -a "$NFQWS2_Z2B_UDP_PKT_OUT" != 0 ] && {
+			f="udp dport {$NFQWS2_Z2B_PORTS_UDP} $(nft_first_packets $NFQWS2_Z2B_UDP_PKT_OUT)"
+			nft_fw_nfqws_post "$f" "$f" $QNUM_Z2B
+		}
+		[ -n "$NFQWS2_Z2B_UDP_PKT_IN" -a "$NFQWS2_Z2B_UDP_PKT_IN" != 0 ] && {
+			f="udp sport {$NFQWS2_Z2B_PORTS_UDP} $(nft_first_packets $NFQWS2_Z2B_UDP_PKT_IN)"
+			nft_fw_nfqws_pre "$f" "$f" $QNUM_Z2B
+		}
+	}
+}
