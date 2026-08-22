@@ -42,6 +42,7 @@ discordcdn.com
 discordmerch.com
 discordsays.com
 discordsez.com
+discordstatus.com
 # Cloudflare + ECH probes
 cloudflare-ech.com
 encryptedsni.com

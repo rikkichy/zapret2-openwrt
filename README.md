@@ -39,7 +39,7 @@ Manual install: copy this folder to the router and run `./service.sh`.
 
 ```
 --payload=tls_client_hello
---lua-desync=fake:blob=fake_default_tls:ip_ttl=4:repeats=6
+--lua-desync=fake:blob=fake_default_tls:tls_mod=rnd,dupsid,sni=www.google.com:ip_ttl=4:repeats=6
 --lua-desync=multidisorder:pos=1,host+1,midsld
 ```
 
@@ -48,10 +48,13 @@ HTTP, QUIC, and Discord voice/STUN. See
 [`custom.d/50-zapret2-bypass`](custom.d/50-zapret2-bypass).
 
 It was picked from 1896 discovery tests plus ~1400 repeat-verified tests
-(`blockcheck2`, `SCANLEVEL=force`, `REPEATS=5`), and cleared 44 of 51 blocked
-hostnames on TLS 1.2, TLS 1.3 and QUIC alike. Verified end to end with
-`yt-dlp`: a 10-minute video pulled 15 MB at 7.5 MB/s, so there is no mid-stream
-("16 KB") stall and no throughput penalty.
+(`blockcheck2`, `SCANLEVEL=force`, `REPEATS=5`). Verification is on **body
+completion**, not status codes — a `200` only proves headers arrived, and the
+CDN block lets headers through before stalling the body. Against the full
+target list it fixed 32 hostnames with **zero regressions**; `discord.com` now
+delivers 170 KB, `discordstatus.com` 466 KB, `klipy.com` 2.4 MB. `yt-dlp`
+pulls a 10-minute video, 15 MB at 7.5 MB/s — no mid-stream stall, no
+throughput penalty.
 
 Why each parameter:
 
@@ -62,6 +65,7 @@ Why each parameter:
 | `host+1` | required for `youtubei.googleapis.com` and `i.ytimg.com`; `midsld` alone is not enough. |
 | QUIC blob | needs a **real** QUIC Initial (`quic_initial_www_google_com.bin`). The built-in `fake_default_quic` never worked. |
 | no `tcp_md5` | on the reference path the md5 fake reaches the *server* and corrupts the connection. `ip_ttl` and `badsum` fool it correctly. |
+| `sni=www.google.com` | **the fake must carry a whitelisted SNI.** There are two separate blocks. Beating the ClientHello block alone leaves a second, response-side block on Cloudflare targets: handshake completes, headers arrive, body stalls forever. Over 6 GET trials × 6 hosts, a random-SNI fake completed **7/36** bodies; the same fake with `sni=www.google.com` completed **35/36**. |
 
 Both fake blobs ship with zapret2 — there is nothing extra to copy.
 
@@ -73,9 +77,10 @@ Both fake blobs ship with zapret2 — there is nothing extra to copy.
 | `list-hetzner.txt` | 7tv — Hetzner (AS24940) gets a stricter ruleset and its own profile |
 | `list-exclude.txt` | hosts the strategy would otherwise **break** |
 
-`list-exclude.txt` matters. `discordstatus.com` is not blocked, and applying the
-strategy to it turns a working 200 into a timeout. Anything you find behaving
-that way belongs in this file.
+`list-exclude.txt` ships **empty**. `discordstatus.com` used to be in it,
+because the older random-SNI fake broke it — the current fake fixes it instead
+(0/6 bodies without the bypass, 6/6 with). Add a host only if you measure it
+working with zapret2 stopped and failing with it running.
 
 Edit lists through menu option 7, or directly in `/opt/zapret2/ipset/`. Restart
 to apply.
@@ -106,9 +111,10 @@ NFQWS2_Z2B_PORTS_UDP="443,50000-65535"
 - `googlevideo.com` and `youtube-nocookie.com` **apex** names stay blocked, but
   nothing uses them: video comes from `rrN---sn*.googlevideo.com` and embeds
   from `www.youtube-nocookie.com`, both of which work.
-- **7tv.app / 7tv.io** are only intermittently reachable. `cdn.7tv.app`, which
-  serves the actual emotes, was never blocked — emotes load in chat even when
-  the 7tv site does not.
+- **7tv.app / 7tv.io** get their own profile (Hetzner, AS24940, stricter
+  ruleset). They were unblocked at the time of the last re-measurement, so that
+  profile is insurance rather than something currently verified. `cdn.7tv.app`,
+  which serves the actual emotes, was never blocked.
 - Results are genuinely unstable run to run (ISP-side DPI load balancing). A
   single failed request does not mean the strategy is wrong.
 

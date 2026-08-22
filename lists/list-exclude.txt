@@ -1,5 +1,8 @@
-# Hosts NOT blocked here that the strategy would otherwise break.
-# Hosts that are NOT blocked here and that the desync strategy actively BREAKS.
-# Measured: discordstatus.com returns 200 with zapret off, 000 with it on.
-# (Atlassian Statuspage backend does not tolerate the disorder+fake sequence.)
-discordstatus.com
+# Hosts that must never be touched by the strategy.
+#
+# Deliberately EMPTY. discordstatus.com used to live here because the older
+# fake (random SNI) broke it. The current fake carries sni=www.google.com and
+# fixes it instead: 0/6 bodies completed without the bypass, 6/6 with it.
+#
+# Add a hostname here only if you measure it working with zapret2 stopped and
+# failing with it running.

@@ -22,6 +22,15 @@
 #             alone is not enough.
 #   NOT tcp_md5 - on the reference path the md5 fake reaches the server and
 #             corrupts the connection. ip_ttl and badsum fool it correctly.
+#
+#   sni=www.google.com  THE FAKE MUST CARRY A WHITELISTED SNI. There are two
+#             separate blocks here. Killing the ClientHello block alone leaves a
+#             second, response-side block on Cloudflare-hosted targets: the TLS
+#             handshake completes, headers arrive, and then the body stalls
+#             forever. Measured over 6 GET trials x 6 Cloudflare hosts, a fake
+#             with a random SNI completed 7/36 bodies; the same fake carrying
+#             sni=www.google.com completed 35/36. Google and Proton were never
+#             affected - only the CDN targets.
 
 # override any of these in the zapret2 config file
 NFQWS2_Z2B_PORTS_TCP="${NFQWS2_Z2B_PORTS_TCP:-80,443}"
@@ -37,7 +46,6 @@ Z2B_FAKE="$ZAPRET_BASE/files/fake"
 NFQWS2_Z2B_OPT="${NFQWS2_Z2B_OPT:-
  --blob=quic_google:@$Z2B_FAKE/quic_initial_www_google_com.bin
  --blob=fake_big:@$Z2B_FAKE/tls_clienthello_iana_org_bigsize.bin
- --lua-init=fake_default_tls=tls_mod(fake_default_tls,'rnd,rndsni')
  --filter-tcp=443 --filter-l7=tls --hostlist=$Z2B_LISTS/list-hetzner.txt --hostlist-exclude=$Z2B_LISTS/list-exclude.txt
    --out-range=-d10 --payload=tls_client_hello
    --lua-desync=fake:blob=fake_big:ip_ttl=4:repeats=6
@@ -45,7 +53,7 @@ NFQWS2_Z2B_OPT="${NFQWS2_Z2B_OPT:-
  --new
  --filter-tcp=443 --filter-l7=tls --hostlist=$Z2B_LISTS/list-general.txt --hostlist-exclude=$Z2B_LISTS/list-exclude.txt
    --out-range=-d10 --payload=tls_client_hello
-   --lua-desync=fake:blob=fake_default_tls:ip_ttl=4:repeats=6
+   --lua-desync=fake:blob=fake_default_tls:tls_mod=rnd,dupsid,sni=www.google.com:ip_ttl=4:repeats=6
    --lua-desync=multidisorder:pos=1,host+1,midsld
  --new
  --filter-tcp=80 --filter-l7=http --hostlist=$Z2B_LISTS/list-general.txt --hostlist-exclude=$Z2B_LISTS/list-exclude.txt
