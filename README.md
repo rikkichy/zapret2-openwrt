@@ -75,7 +75,8 @@ Both fake blobs ship with zapret2 — there is nothing extra to copy.
 |---|---|
 | `list-general.txt` | domains measured as blocked |
 | `list-hetzner.txt` | 7tv — Hetzner (AS24940) gets a stricter ruleset and its own profile |
-| `list-exclude.txt` | hosts the strategy would otherwise **break** |
+| `list-exclude.txt` | hosts the strategy would otherwise **break** (ships empty) |
+| `zapret-hosts-user-ipban.txt` | IP-blocked hosts — need a proxy, see [IP blocks](#ip-blocks) |
 
 `list-exclude.txt` ships **empty**. `discordstatus.com` used to be in it,
 because the older random-SNI fake broke it — the current fake fixes it instead
@@ -106,8 +107,14 @@ NFQWS2_Z2B_PORTS_UDP="443,50000-65535"
 
 ## Known limits
 
-- **instagram.com is an IP block** — TCP 443 never connects. No desync strategy
-  can fix that; it needs a proxy or VPN.
+- **Some hosts are IP-blocked, not DPI-blocked** — the TCP handshake never
+  completes, so there is no TLS exchange for a desync to act on and zapret2
+  cannot help by design. Currently `mail.proton.me`, `api.protonmail.ch`,
+  `protonmail.com`, `mail.protonmail.com` and `instagram.com`. Note the Proton
+  block is *per-IP*: `proton.me`, `account.proton.me`, `calendar`, `drive` and
+  `mail-api` all work — only Proton **Mail**'s front-ends are dropped, which is
+  why the site and login work but the mailbox never opens. See
+  [IP blocks](#ip-blocks).
 - `googlevideo.com` and `youtube-nocookie.com` **apex** names stay blocked, but
   nothing uses them: video comes from `rrN---sn*.googlevideo.com` and embeds
   from `www.youtube-nocookie.com`, both of which work.
@@ -117,6 +124,27 @@ NFQWS2_Z2B_PORTS_UDP="443,50000-65535"
   which serves the actual emotes, was never blocked.
 - Results are genuinely unstable run to run (ISP-side DPI load balancing). A
   single failed request does not mean the strategy is wrong.
+
+## IP blocks
+
+Run the detector with zapret2 **stopped** — the answer must not depend on the
+bypass:
+
+```sh
+./tools/find-ipblocks.sh
+```
+
+It TCP-connects to every address of every host in `tools/probe-hosts.txt`,
+three times, on ports 443 and 80, and reports the ones that never answer. It
+also flags the case where only some of a host's addresses fail, which is
+anycast noise rather than a block — Discord trips that regularly.
+
+Anything it reports genuinely cannot be fixed here. `lists/zapret-hosts-user-ipban.txt`
+holds the current set; copy it to `/opt/zapret2/ipset/` and the startup scripts
+will resolve it into the kernel sets `ipban`/`ipban6`. zapret2 does not proxy
+anything itself — those sets exist so you can match them in policy routing or a
+selective proxy, sending only those hosts through a VPN while everything else
+stays direct.
 
 ## Menu
 

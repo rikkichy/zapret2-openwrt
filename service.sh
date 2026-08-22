@@ -295,7 +295,7 @@ copy_lists() {
     local src="$SCRIPT_DIR/lists"
     local dst="$ZAPRET_BASE/ipset"
     local copied=0
-    for f in list-general.txt list-hetzner.txt list-exclude.txt; do
+    for f in list-general.txt list-hetzner.txt list-exclude.txt zapret-hosts-user-ipban.txt; do
         if [ -f "$src/$f" ]; then
             if [ ! -f "$dst/$f" ]; then
                 cp "$src/$f" "$dst/$f"
@@ -523,7 +523,7 @@ action_diagnostics() {
     fi
 
     printf "\n"
-    for f in list-general.txt list-hetzner.txt list-exclude.txt; do
+    for f in list-general.txt list-hetzner.txt list-exclude.txt zapret-hosts-user-ipban.txt; do
         if [ -f "$ZAPRET_BASE/ipset/$f" ]; then
             local count=$(wc -l < "$ZAPRET_BASE/ipset/$f" 2>/dev/null)
             print_ok "$(printf "$(t file_entries_fmt)" "$f" "$count")"

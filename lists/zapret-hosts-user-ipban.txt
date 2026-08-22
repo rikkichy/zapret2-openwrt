@@ -1,0 +1,26 @@
+# Hosts that are IP-BLOCKED, not DPI-blocked.
+#
+# The TCP handshake to these never completes, so no zapret2 strategy can help -
+# there is no TLS exchange for a desync to act on. They need a proxy or VPN.
+#
+# zapret2 does not proxy anything itself. Putting them here makes the startup
+# scripts resolve them into the kernel sets "ipban"/"ipban6", which you can then
+# match in policy routing or a selective proxy - so only these hosts detour and
+# everything else stays direct.
+#
+# Verified 2026-08-22 with tools/find-ipblocks.sh (zapret2 stopped):
+#   185.70.42.37  mail.proton.me        no TCP on 80/443/8443
+#   185.70.42.25  api.protonmail.ch
+#   185.70.42.12  protonmail.com
+#   185.70.42.42  mail.protonmail.com
+#   157.240.205.174  instagram.com
+# Sibling Proton IPs (.36 account, .39 calendar, .40 drive, .41 mail-api,
+# .45 proton.me) are reachable - the block is per-IP, not the whole /24.
+#
+# Listed as hostnames so the list scripts re-resolve them; the IPs do rotate.
+
+mail.proton.me
+api.protonmail.ch
+protonmail.com
+mail.protonmail.com
+instagram.com

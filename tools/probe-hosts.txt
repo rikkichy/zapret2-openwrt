@@ -1,0 +1,28 @@
+# Concrete hostnames to test for IP blocks. The nfqws2 hostlists match
+# subdomains automatically, but a resolver needs real names - so the specific
+# subdomains that matter are spelled out here.
+proton.me
+mail.proton.me
+account.proton.me
+mail-api.proton.me
+drive.proton.me
+calendar.proton.me
+api.protonmail.ch
+protonmail.com
+mail.protonmail.com
+pm.me
+instagram.com
+www.instagram.com
+discord.com
+cdn.discordapp.com
+media.discordapp.net
+gateway.discord.gg
+updates.discord.com
+www.youtube.com
+i.ytimg.com
+redirector.googlevideo.com
+x.com
+video.twimg.com
+api.7tv.app
+cdn.frankerfacez.com
+cdn.betterttv.net
