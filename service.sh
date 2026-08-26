@@ -311,6 +311,24 @@ copy_lists() {
     fi
 }
 
+copy_bins() {
+    local src="$SCRIPT_DIR/files/fake"
+    local dst="$ZAPRET_BASE/files/fake"
+    local copied=0
+    for f in quic_initial_steamcommunity_com.bin; do
+        if [ -f "$src/$f" ]; then
+            if [ ! -f "$dst/$f" ]; then
+                cp "$src/$f" "$dst/$f"
+                print_ok "$(printf "$(t copied_fmt)" "$f" "$dst/")"
+                copied=$((copied + 1))
+            fi
+        else
+            print_warn "$(printf "$(t source_missing_fmt)" "$f" "$src/")"
+        fi
+    done
+    [ "$copied" -eq 0 ] && print_info "$(t all_bins_present)"
+}
+
 action_install_strategy()
 {
     clear
@@ -333,6 +351,7 @@ action_install_strategy()
 
     print_info "$(printf "$(t installing_strategy_fmt)" "$STRATEGY_NAME")"
     copy_lists
+    copy_bins
 
     rm -f "$CUSTOM_D/$STRATEGY_FILE"
     cp "$src" "$CUSTOM_D/"
@@ -533,7 +552,7 @@ action_diagnostics() {
     done
 
     printf "\n"
-    for f in quic_initial_www_google_com.bin tls_clienthello_iana_org_bigsize.bin; do
+    for f in quic_initial_www_google_com.bin tls_clienthello_iana_org_bigsize.bin quic_initial_steamcommunity_com.bin; do
         if [ -f "$ZAPRET_BASE/files/fake/$f" ]; then
             print_ok "$f"
         else
@@ -685,6 +704,7 @@ first_run_check()
     printf "\n"
     print_info "$(t step1)"
     copy_lists
+    copy_bins
 
     printf "\n"
     print_info "$(t step2)"

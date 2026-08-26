@@ -64,10 +64,37 @@ Why each parameter:
 | `repeats=6` | not cosmetic. At `repeats=2`, discord.com and googlevideo fail. |
 | `host+1` | required for `youtubei.googleapis.com` and `i.ytimg.com`; `midsld` alone is not enough. |
 | QUIC blob | needs a **real** QUIC Initial (`quic_initial_www_google_com.bin`). The built-in `fake_default_quic` never worked. |
+| voice fake | Discord voice/STUN needs a **real QUIC Initial** as the fake (1200 B) at `repeats=6` — not a block of zero bytes at `repeats=2`. The zero-byte version left foreign (non-RU) voice channels and screenshare unusable. |
 | no `tcp_md5` | on the reference path the md5 fake reaches the *server* and corrupts the connection. `ip_ttl` and `badsum` fool it correctly. |
 | `sni=www.google.com` | **the fake must carry a whitelisted SNI.** There are two separate blocks. Beating the ClientHello block alone leaves a second, response-side block on Cloudflare targets: handshake completes, headers arrive, body stalls forever. Over 6 GET trials × 6 hosts, a random-SNI fake completed **7/36** bodies; the same fake with `sni=www.google.com` completed **35/36**. |
 
 Both fake blobs ship with zapret2 — there is nothing extra to copy.
+
+## Discord voice
+
+Voice and screenshare are UDP, on `19294-19344` and `50000-65535`, matched by
+payload (`discord_ip_discovery`, `stun`) rather than by host. The fake for that
+profile must be a **real QUIC Initial**, not zeros:
+
+```
+--lua-desync=fake:blob=voice_fake:repeats=6
+```
+
+`files/fake/quic_initial_steamcommunity_com.bin` (1200 B) is used by default —
+the same payload the upstream Windows bundle ships as `ACTIVE_DISCORD_UDP.bin`,
+which is what was confirmed working for foreign voice channels. Point
+`NFQWS2_Z2B_VOICE_FAKE` at zapret2's own `quic_initial_www_google_com.bin` if
+you would rather not add the file; it is the same size and shape.
+
+Verified at packet level (nfqws2 classifies both payload types and emits 6 ×
+1228-byte fakes). **Not verified end to end** — live voice needs the Discord
+client, since the voice server only answers IP-discovery carrying an SSRC from
+a real session.
+
+TCP interception also covers Cloudflare's alternate HTTPS ports
+(`2053,2083,2087,2096,8443`), which Discord uses for `discord.media`. Those
+were measured as *not* blocked on the reference connection, so this is
+coverage rather than a fix.
 
 ## Lists
 
@@ -77,6 +104,7 @@ Both fake blobs ship with zapret2 — there is nothing extra to copy.
 | `list-hetzner.txt` | 7tv — Hetzner (AS24940) gets a stricter ruleset and its own profile |
 | `list-exclude.txt` | hosts the strategy would otherwise **break** (ships empty) |
 | `zapret-hosts-user-ipban.txt` | IP-blocked hosts — need a proxy, see [IP blocks](#ip-blocks) |
+| `files/fake/` | the Discord voice fake (see [Discord voice](#discord-voice)) |
 
 `list-exclude.txt` ships **empty**. `discordstatus.com` used to be in it,
 because the older random-SNI fake broke it — the current fake fixes it instead

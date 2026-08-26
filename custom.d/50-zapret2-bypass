@@ -23,6 +23,13 @@
 #   NOT tcp_md5 - on the reference path the md5 fake reaches the server and
 #             corrupts the connection. ip_ttl and badsum fool it correctly.
 #
+#   voice fake  Discord voice/STUN needs a REAL QUIC Initial as the fake, not a
+#             block of zero bytes, and repeats=6 not 2. A 16-zero-byte fake at
+#             repeats=2 left foreign (non-RU) voice channels and screenshare
+#             unusable; the 1200-byte QUIC Initial at repeats=6 is what the
+#             upstream Windows bundle uses and what was confirmed working.
+#             NOT verified here - live voice needs the Discord client.
+#
 #   sni=www.google.com  THE FAKE MUST CARRY A WHITELISTED SNI. There are two
 #             separate blocks here. Killing the ClientHello block alone leaves a
 #             second, response-side block on Cloudflare-hosted targets: the TLS
@@ -33,7 +40,7 @@
 #             affected - only the CDN targets.
 
 # override any of these in the zapret2 config file
-NFQWS2_Z2B_PORTS_TCP="${NFQWS2_Z2B_PORTS_TCP:-80,443}"
+NFQWS2_Z2B_PORTS_TCP="${NFQWS2_Z2B_PORTS_TCP:-80,443,2053,2083,2087,2096,8443}"
 NFQWS2_Z2B_PORTS_UDP="${NFQWS2_Z2B_PORTS_UDP:-443,19294-19344,50000-65535}"
 NFQWS2_Z2B_TCP_PKT_OUT="${NFQWS2_Z2B_TCP_PKT_OUT:-20}"
 NFQWS2_Z2B_TCP_PKT_IN="${NFQWS2_Z2B_TCP_PKT_IN:-10}"
@@ -42,16 +49,20 @@ NFQWS2_Z2B_UDP_PKT_IN="${NFQWS2_Z2B_UDP_PKT_IN:-4}"
 
 Z2B_LISTS="$ZAPRET_BASE/ipset"
 Z2B_FAKE="$ZAPRET_BASE/files/fake"
+# Discord voice/STUN fake. Must be a REAL QUIC Initial, not zero bytes - see notes below.
+# Substitute $Z2B_FAKE/quic_initial_www_google_com.bin to avoid the extra file.
+NFQWS2_Z2B_VOICE_FAKE="${NFQWS2_Z2B_VOICE_FAKE:-$Z2B_FAKE/quic_initial_steamcommunity_com.bin}"
 
 NFQWS2_Z2B_OPT="${NFQWS2_Z2B_OPT:-
  --blob=quic_google:@$Z2B_FAKE/quic_initial_www_google_com.bin
  --blob=fake_big:@$Z2B_FAKE/tls_clienthello_iana_org_bigsize.bin
+ --blob=voice_fake:@$NFQWS2_Z2B_VOICE_FAKE
  --filter-tcp=443 --filter-l7=tls --hostlist=$Z2B_LISTS/list-hetzner.txt --hostlist-exclude=$Z2B_LISTS/list-exclude.txt
    --out-range=-d10 --payload=tls_client_hello
    --lua-desync=fake:blob=fake_big:ip_ttl=4:repeats=6
    --lua-desync=multidisorder:pos=1,host+1,midsld
  --new
- --filter-tcp=443 --filter-l7=tls --hostlist=$Z2B_LISTS/list-general.txt --hostlist-exclude=$Z2B_LISTS/list-exclude.txt
+ --filter-tcp=443,2053,2083,2087,2096,8443 --filter-l7=tls --hostlist=$Z2B_LISTS/list-general.txt --hostlist-exclude=$Z2B_LISTS/list-exclude.txt
    --out-range=-d10 --payload=tls_client_hello
    --lua-desync=fake:blob=fake_default_tls:tls_mod=rnd,dupsid,sni=www.google.com:ip_ttl=4:repeats=6
    --lua-desync=multidisorder:pos=1,host+1,midsld
@@ -67,7 +78,7 @@ NFQWS2_Z2B_OPT="${NFQWS2_Z2B_OPT:-
  --new
  --filter-udp=19294-19344,50000-65535 --filter-l7=discord,stun
    --payload=discord_ip_discovery,stun
-   --lua-desync=fake:blob=0x00000000000000000000000000000000:repeats=2}"
+   --lua-desync=fake:blob=voice_fake:repeats=6}"
 
 alloc_dnum DNUM_Z2B
 alloc_qnum QNUM_Z2B
