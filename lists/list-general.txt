@@ -78,3 +78,12 @@ proton.me
 # instagram.com is IP-blocked (TCP 443 never connects). Listed for
 # completeness only - no desync strategy can fix an IP block.
 instagram.com
+
+# Anime365 / smotret-anime - same service, Cloudflare-hosted.
+# Response-side CDN stall: apex 302 completes (no body), real pages hang.
+# /users/login: 0/5 bodies without the bypass -> 5/5 with it.
+smotret-anime.online
+anime-365.ru
+smotret-anime.org
+smotret-anime.net
+smotret-anime.com

@@ -114,6 +114,21 @@ working with zapret2 stopped and failing with it running.
 Edit lists through menu option 7, or directly in `/opt/zapret2/ipset/`. Restart
 to apply.
 
+## Adding a site
+
+Put the hostname in `lists/list-general.txt` and restart. Subdomains match
+automatically. Before and after, verify on **body completion against a URL that
+returns real content** — not the apex:
+
+```sh
+curl -sS -o /dev/null -w '%{http_code} %{size_download}B exit=%{exitcode}\n' \
+     --max-time 18 'https://example.com/some/real/page'
+```
+
+A `200` only proves headers arrived, and a redirect proves less still: Anime365's
+apex returns a 302 with an empty body, so it completes even while every real page
+on the site hangs.
+
 ## Re-tuning for your ISP
 
 DPI behaviour is path- and time-specific. If a site stays blocked, `ip_ttl` is
