@@ -1,0 +1,16 @@
+# Shared ECH and CDN coverage carried over from flat.
+# These hostnames serve multiple applications, not just Discord.
+cloudflare-ech.com
+encryptedsni.com
+cloudflareaccess.com
+cloudflareclient.com
+cloudflareinsights.com
+cloudflareok.com
+cloudflareportal.com
+cloudflarepreview.com
+cloudflaressl.com
+cloudflarestatus.com
+cloudflarestorage.com
+cloudflarestream.com
+cloudfront.net
+storage.googleapis.com

@@ -11,6 +11,7 @@
 --hostlist=/sky/discord.txt
 --hostlist=/sky/proton.txt
 --hostlist=/sky/anime.txt
+--hostlist=/sky/shared.txt
 --out-range=-d10
 --payload=tls_client_hello
 --lua-desync=fake:blob=fake_default_tls:tls_mod=rnd,dupsid,sni=www.google.com:tcp_ts=-1000:repeats=6
@@ -29,6 +30,7 @@
 --filter-udp=443
 --filter-l7=quic
 --hostlist=/sky/discord.txt
+--hostlist=/sky/shared.txt
 --out-range=-d8
 --payload=quic_initial
 --lua-desync=fake:blob=quic_google:ip_ttl=4:repeats=6

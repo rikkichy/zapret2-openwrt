@@ -369,7 +369,7 @@ prepare_strategy() {
             { print_fail "$(printf "$(t file_not_found_fmt)" "$ZAPRET_BASE/$f")"; return 1; }
     done
     if [ "$SELECTED_STRATEGY" = sky ]; then
-        for f in youtube.txt discord.txt proton.txt anime.txt; do
+        for f in youtube.txt discord.txt proton.txt anime.txt shared.txt; do
             stage_asset "strategies/sky/$f" "$SCRIPT_DIR/strategies/sky/$f" || return 1
         done
         rel=strategies/sky/strategy.args
@@ -588,7 +588,7 @@ action_status() {
 strategy_lists() {
     if [ "$ACTIVE_STRATEGY" = sky ]; then
         printf '%s\n' strategies/sky/youtube.txt strategies/sky/discord.txt \
-            strategies/sky/proton.txt strategies/sky/anime.txt ipset/list-exclude.txt
+            strategies/sky/proton.txt strategies/sky/anime.txt strategies/sky/shared.txt ipset/list-exclude.txt
     else
         printf '%s\n' ipset/list-general.txt ipset/list-hetzner.txt ipset/list-exclude.txt
     fi

@@ -45,6 +45,15 @@ Sky's native profiles and editable lists are installed under
 [`strategy.args`](strategies/sky/strategy.args), using upstream queue allocation
 and Lua initialization. Only one custom.d entrypoint is installed.
 
+`shared.txt` restores flat's shared Cloudflare/ECH/CDN host group, including
+`storage.googleapis.com`. It is used by sky's TLS and TTL-limited QUIC profiles.
+YouTube/Anime365 keep their separate QUIC profile; no desync parameters changed.
+
+**Existing sky installations:** update the manager, then select option **1 → 2**
+to reinstall sky and start it. This adds the new shared list and updates native
+profile references without overwriting your existing edited service lists.
+Updating the manager alone does not change the running strategy.
+
 Existing port/packet overrides apply to both strategies. `NFQWS2_Z2B_OPT` and
 `NFQWS2_Z2B_VOICE_FAKE` remain **flat-only**, so old flat options cannot silently
 replace a sky selection. Sky is IPv4-only and depends on negotiated TCP timestamps.

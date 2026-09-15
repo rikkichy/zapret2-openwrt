@@ -107,7 +107,7 @@ z2b_check_strategy()
 	case "$Z2B_STRATEGY" in
 		flat) return 0 ;;
 		sky)
-			for asset in strategy.args youtube.txt discord.txt proton.txt anime.txt; do
+			for asset in strategy.args youtube.txt discord.txt proton.txt anime.txt shared.txt; do
 				[ -f "$ZAPRET_BASE/strategies/sky/$asset" ] && [ -r "$ZAPRET_BASE/strategies/sky/$asset" ] ||
 					{ error="missing or unreadable sky asset: $ZAPRET_BASE/strategies/sky/$asset"; break; }
 			done

@@ -165,6 +165,15 @@ try:
     finish_action()
     assert youtube.read_text() == edited
 
+    # Upgrade an existing sky installation that predates the shared host group.
+    (base / 'strategies/sky/shared.txt').unlink()
+    native_args = base / 'strategies/sky/strategy.args'
+    native_args.write_text(native_args.read_text().replace(f'--hostlist={base}/strategies/sky/shared.txt\n', ''))
+    install('2')
+    assert active() == 'sky' and youtube.read_text() == edited
+    one_daemon()
+    print('PASS: reinstall adds shared host coverage without replacing edited lists', flush=True)
+
     install('1')
     assert active() == 'flat'
     one_daemon()
