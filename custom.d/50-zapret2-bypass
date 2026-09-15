@@ -1,5 +1,5 @@
 # custom.d script: measured DPI bypass for Discord / YouTube / X / Proton / CDNs
-# Strategy: measured-2026-08-22
+# Strategy: flat (first provider, measured 2026-08-22)
 #
 # Engine: zapret2 (nfqws2). NOT compatible with zapret v1.
 #

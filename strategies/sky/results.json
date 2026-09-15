@@ -1,0 +1,64 @@
+{
+  "strategy": "sky",
+  "scope": "Initial ISP 2 candidate; Docker inside existing Lima vzNAT VM; IPv4 only; not deployed to router or Mac apps",
+  "runtime": "Existing zapret2 image 0b700db60a46, self-built 2026-08-22; curl 8.21.0",
+  "tcp": "Google-SNI fake, tcp_ts=-1000, repeats=6; multidisorder pos=1,host+1,midsld",
+  "youtube_quic": "Real Google Initial, repeats=6, no TTL fooling",
+  "discord_quic": "Real Google Initial, ip_ttl=4, repeats=6",
+  "voice": "Real Steam Initial, repeats=6; discovery/STUN signatures only",
+  "repeated_bodies": {
+    "passed": 59,
+    "total": 60,
+    "failures": [
+      {
+        "attempt": 1,
+        "protocol": "tls12",
+        "url": "https://i.ytimg.com/vi/jNQXAC9IVRw/hqdefault.jpg",
+        "ok": false,
+        "exit": 28,
+        "status": 0,
+        "bytes": 0,
+        "ip": "",
+        "http_version": "0",
+        "seconds": 6.002841,
+        "error": "curl: (28) Connection timed out after 6002 milliseconds"
+      }
+    ]
+  },
+  "baseline_after": {
+    "passed": 0,
+    "total": 12
+  },
+  "real_video_download_bytes": [
+    322379,
+    15298808
+  ],
+  "discord_websocket": "HTTP 101; Gateway Hello op=10, heartbeat_interval=41250 ms; unauthenticated",
+  "voice_verification": "Loopback receiver: six 1200-byte fakes + original for discovery and STUN; unrelated UDP unmodified; NOT end-to-end",
+  "limits": [
+    "One of five TLS1.2 thumbnail requests timed out; retain failure, not production-stable claim",
+    "TCP fake requires negotiated TCP timestamps; absent timestamps unverified and potentially corrupting",
+    "No routed IPv6 default in VM; no IPv6 claim",
+    "Live Discord voice/screenshare requires a live client/session and is unverified",
+    "discordstatus.com body stall remains outside core candidate hostlist",
+    "No Mac application interception; Docker host network is the Linux VM",
+    "Old preflight failed TTL=3/badsum controls; do not infer exact normalization location from it",
+    "yt-dlp lacks supported JavaScript runtime; tested selected video formats succeeded, broader format extraction unverified"
+  ],
+  "evidence": {
+    "baseline": "evidence/baseline.json",
+    "dns": "evidence/dns.txt",
+    "packet_controls": "evidence/control-path.txt",
+    "tcp_discovery": "evidence/tcp-sweep.txt",
+    "tcp_refinement": "evidence/tcp-refine.txt",
+    "quic_discovery": "evidence/quic-sweep.txt",
+    "repeats": "evidence/candidate-results.jsonl",
+    "off_control": "evidence/baseline-after.jsonl",
+    "playback": "evidence/playback.txt",
+    "voice": "evidence/voice-packets.txt",
+    "restoration": "evidence/cleanup.txt"
+  },
+  "source_revision": "a0be7cbb40a4230e4b60fc33b7ea06102eb8ec15",
+  "measured_yt_dlp_version": "2026.08.19",
+  "measurement_date": "2026-09-15"
+}

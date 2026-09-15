@@ -1,0 +1,3 @@
+{"payload": "discord_ip_discovery", "original_received": true, "fake_datagrams": 6, "fake_bytes": 1200, "scope": "container loopback only; NOT live voice"}
+{"payload": "stun", "original_received": true, "fake_datagrams": 6, "fake_bytes": 1200, "scope": "container loopback only; NOT live voice"}
+{"payload": "unrelated_udp", "original_received": true, "fake_datagrams": 0, "fake_bytes": 1200, "scope": "container loopback only; NOT live voice"}

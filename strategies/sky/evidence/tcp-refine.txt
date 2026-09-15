@@ -1,0 +1,44 @@
+net.netfilter.nf_conntrack_tcp_be_liberal = 1
+{"candidate": "seq", "proto": "tls12", "url": "https://www.youtube.com/", "exit": 28, "status": 0, "bytes": 0, "ip": "", "seconds": 5.007478, "error": "curl: (28) Connection timed out after 5006 milliseconds"}
+{"candidate": "seq", "proto": "tls12", "url": "https://discord.com/", "exit": 28, "status": 0, "bytes": 0, "ip": "", "seconds": 5.002995, "error": "curl: (28) Connection timed out after 5001 milliseconds"}
+{"candidate": "seq", "proto": "tls12", "url": "https://discord.com/api/v10/gateway", "exit": 28, "status": 0, "bytes": 0, "ip": "", "seconds": 5.002964, "error": "curl: (28) Connection timed out after 5001 milliseconds"}
+{"candidate": "seq", "proto": "tls13", "url": "https://www.youtube.com/", "exit": 28, "status": 0, "bytes": 0, "ip": "", "seconds": 5.004107, "error": "curl: (28) Connection timed out after 5002 milliseconds"}
+{"candidate": "seq", "proto": "tls13", "url": "https://discord.com/", "exit": 28, "status": 0, "bytes": 0, "ip": "", "seconds": 5.003539, "error": "curl: (28) Connection timed out after 5002 milliseconds"}
+{"candidate": "seq", "proto": "tls13", "url": "https://discord.com/api/v10/gateway", "exit": 28, "status": 0, "bytes": 0, "ip": "", "seconds": 5.002121, "error": "curl: (28) Connection timed out after 5001 milliseconds"}
+{"candidate": "seq", "proto": "tls13", "url": "https://example.com/", "exit": 28, "status": 0, "bytes": 0, "ip": "", "seconds": 5.002321, "error": "curl: (28) Connection timed out after 5001 milliseconds"}
+{"candidate": "ack", "proto": "tls12", "url": "https://www.youtube.com/", "exit": 28, "status": 0, "bytes": 0, "ip": "", "seconds": 5.007942, "error": "curl: (28) Connection timed out after 5006 milliseconds"}
+{"candidate": "ack", "proto": "tls12", "url": "https://discord.com/", "exit": 28, "status": 0, "bytes": 0, "ip": "", "seconds": 5.00538, "error": "curl: (28) Connection timed out after 5004 milliseconds"}
+{"candidate": "ack", "proto": "tls12", "url": "https://discord.com/api/v10/gateway", "exit": 28, "status": 0, "bytes": 0, "ip": "", "seconds": 5.007415, "error": "curl: (28) Connection timed out after 5006 milliseconds"}
+{"candidate": "ack", "proto": "tls13", "url": "https://www.youtube.com/", "exit": 28, "status": 0, "bytes": 0, "ip": "", "seconds": 5.002665, "error": "curl: (28) Connection timed out after 5001 milliseconds"}
+{"candidate": "ack", "proto": "tls13", "url": "https://discord.com/", "exit": 28, "status": 0, "bytes": 0, "ip": "", "seconds": 5.006114, "error": "curl: (28) Connection timed out after 5004 milliseconds"}
+{"candidate": "ack", "proto": "tls13", "url": "https://discord.com/api/v10/gateway", "exit": 28, "status": 0, "bytes": 0, "ip": "", "seconds": 5.007043, "error": "curl: (28) Connection timed out after 5005 milliseconds"}
+{"candidate": "ack", "proto": "tls13", "url": "https://example.com/", "exit": 28, "status": 0, "bytes": 0, "ip": "", "seconds": 5.005914, "error": "curl: (28) Connection timed out after 5004 milliseconds"}
+{"candidate": "md5", "proto": "tls12", "url": "https://www.youtube.com/", "exit": 28, "status": 0, "bytes": 0, "ip": "", "seconds": 5.003159, "error": "curl: (28) Connection timed out after 5001 milliseconds"}
+{"candidate": "md5", "proto": "tls12", "url": "https://discord.com/", "exit": 28, "status": 0, "bytes": 0, "ip": "", "seconds": 5.003159, "error": "curl: (28) Connection timed out after 5001 milliseconds"}
+{"candidate": "md5", "proto": "tls12", "url": "https://discord.com/api/v10/gateway", "exit": 28, "status": 0, "bytes": 0, "ip": "", "seconds": 5.003998, "error": "curl: (28) Connection timed out after 5002 milliseconds"}
+{"candidate": "md5", "proto": "tls13", "url": "https://www.youtube.com/", "exit": 28, "status": 0, "bytes": 0, "ip": "", "seconds": 5.003685, "error": "curl: (28) Connection timed out after 5002 milliseconds"}
+{"candidate": "md5", "proto": "tls13", "url": "https://discord.com/", "exit": 28, "status": 0, "bytes": 0, "ip": "", "seconds": 5.003409, "error": "curl: (28) Connection timed out after 5002 milliseconds"}
+{"candidate": "md5", "proto": "tls13", "url": "https://discord.com/api/v10/gateway", "exit": 28, "status": 0, "bytes": 0, "ip": "", "seconds": 5.004424, "error": "curl: (28) Connection timed out after 5003 milliseconds"}
+{"candidate": "md5", "proto": "tls13", "url": "https://example.com/", "exit": 28, "status": 0, "bytes": 0, "ip": "", "seconds": 5.002937, "error": "curl: (28) Connection timed out after 5001 milliseconds"}
+{"candidate": "ts", "proto": "tls12", "url": "https://www.youtube.com/", "exit": 0, "status": 200, "bytes": 891951, "ip": "142.251.152.4", "seconds": 0.295876, "error": ""}
+{"candidate": "ts", "proto": "tls12", "url": "https://discord.com/", "exit": 0, "status": 200, "bytes": 170139, "ip": "162.159.137.232", "seconds": 0.129569, "error": ""}
+{"candidate": "ts", "proto": "tls12", "url": "https://discord.com/api/v10/gateway", "exit": 0, "status": 200, "bytes": 35, "ip": "162.159.138.232", "seconds": 0.342961, "error": ""}
+{"candidate": "ts", "proto": "tls13", "url": "https://www.youtube.com/", "exit": 0, "status": 200, "bytes": 884179, "ip": "142.251.150.4", "seconds": 0.241434, "error": ""}
+{"candidate": "ts", "proto": "tls13", "url": "https://discord.com/", "exit": 0, "status": 200, "bytes": 170139, "ip": "162.159.137.232", "seconds": 0.114896, "error": ""}
+{"candidate": "ts", "proto": "tls13", "url": "https://discord.com/api/v10/gateway", "exit": 0, "status": 200, "bytes": 35, "ip": "162.159.137.232", "seconds": 0.102121, "error": ""}
+{"candidate": "ts", "proto": "tls13", "url": "https://example.com/", "exit": 0, "status": 200, "bytes": 559, "ip": "8.47.69.0", "seconds": 0.079529, "error": ""}
+{"candidate": "split-seqovl", "proto": "tls12", "url": "https://www.youtube.com/", "exit": 28, "status": 0, "bytes": 0, "ip": "", "seconds": 5.004823, "error": "curl: (28) Connection timed out after 5003 milliseconds"}
+{"candidate": "split-seqovl", "proto": "tls12", "url": "https://discord.com/", "exit": 28, "status": 0, "bytes": 0, "ip": "", "seconds": 5.002997, "error": "curl: (28) Connection timed out after 5001 milliseconds"}
+{"candidate": "split-seqovl", "proto": "tls12", "url": "https://discord.com/api/v10/gateway", "exit": 28, "status": 0, "bytes": 0, "ip": "", "seconds": 5.004453, "error": "curl: (28) Connection timed out after 5003 milliseconds"}
+{"candidate": "split-seqovl", "proto": "tls13", "url": "https://www.youtube.com/", "exit": 0, "status": 200, "bytes": 894943, "ip": "142.251.153.4", "seconds": 0.2794, "error": ""}
+{"candidate": "split-seqovl", "proto": "tls13", "url": "https://discord.com/", "exit": 28, "status": 200, "bytes": 8196, "ip": "162.159.128.233", "seconds": 10.004913, "error": "curl: (28) Operation timed out after 10004 milliseconds with 8196 bytes received"}
+{"candidate": "split-seqovl", "proto": "tls13", "url": "https://discord.com/api/v10/gateway", "exit": 0, "status": 200, "bytes": 35, "ip": "162.159.138.232", "seconds": 0.091421, "error": ""}
+{"candidate": "split-seqovl", "proto": "tls13", "url": "https://example.com/", "exit": 0, "status": 200, "bytes": 559, "ip": "8.47.69.0", "seconds": 0.07022, "error": ""}
+{"candidate": "disorder-overlap", "proto": "tls12", "url": "https://www.youtube.com/", "exit": 28, "status": 0, "bytes": 0, "ip": "", "seconds": 5.008042, "error": "curl: (28) Connection timed out after 5006 milliseconds"}
+{"candidate": "disorder-overlap", "proto": "tls12", "url": "https://discord.com/", "exit": 28, "status": 0, "bytes": 0, "ip": "", "seconds": 5.005588, "error": "curl: (28) Connection timed out after 5004 milliseconds"}
+{"candidate": "disorder-overlap", "proto": "tls12", "url": "https://discord.com/api/v10/gateway", "exit": 28, "status": 0, "bytes": 0, "ip": "", "seconds": 5.006869, "error": "curl: (28) Connection timed out after 5005 milliseconds"}
+{"candidate": "disorder-overlap", "proto": "tls13", "url": "https://www.youtube.com/", "exit": 35, "status": 0, "bytes": 0, "ip": "", "seconds": 0.042152, "error": "curl: (35) TLS connect error: error:0A00041A:SSL routines::tlsv1 alert decode error"}
+{"candidate": "disorder-overlap", "proto": "tls13", "url": "https://discord.com/", "exit": 35, "status": 0, "bytes": 0, "ip": "", "seconds": 0.056051, "error": "curl: (35) TLS connect error: error:0A00041A:SSL routines::tlsv1 alert decode error"}
+{"candidate": "disorder-overlap", "proto": "tls13", "url": "https://discord.com/api/v10/gateway", "exit": 35, "status": 0, "bytes": 0, "ip": "", "seconds": 0.051932, "error": "curl: (35) TLS connect error: error:0A00041A:SSL routines::tlsv1 alert decode error"}
+{"candidate": "disorder-overlap", "proto": "tls13", "url": "https://example.com/", "exit": 35, "status": 0, "bytes": 0, "ip": "", "seconds": 0.019927, "error": "curl: (35) TLS connect error: error:0A00041A:SSL routines::tlsv1 alert decode error"}
+net.netfilter.nf_conntrack_tcp_be_liberal = 0

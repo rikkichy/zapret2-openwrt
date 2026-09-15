@@ -1,0 +1,63 @@
+{"websocket_upgrade": "HTTP/1.1 101 Switching Protocols", "gateway_hello_op": 10, "heartbeat_interval": 41250}
+=== real YouTube clip ===
+[youtube] Extracting URL: https://www.youtube.com/watch?v=jNQXAC9IVRw
+[youtube] jNQXAC9IVRw: Downloading webpage
+[youtube] jNQXAC9IVRw: Downloading visionos player API JSON
+[youtube] jNQXAC9IVRw: Downloading m3u8 information
+[info] jNQXAC9IVRw: Downloading 1 format(s): 134
+[download] Destination: /tmp/isp2-clip.mp4
+
+[download]   0.3% of  314.82KiB at  475.44KiB/s ETA 00:00
+[download]   1.0% of  314.82KiB at    1.17MiB/s ETA 00:00
+[download]   2.2% of  314.82KiB at    2.52MiB/s ETA 00:00
+[download]   4.8% of  314.82KiB at    5.06MiB/s ETA 00:00
+[download]   9.8% of  314.82KiB at    4.11MiB/s ETA 00:00
+[download]  20.0% of  314.82KiB at    6.47MiB/s ETA 00:00
+[download]  40.3% of  314.82KiB at    6.55MiB/s ETA 00:00
+[download]  81.0% of  314.82KiB at    9.64MiB/s ETA 00:00
+[download] 100.0% of  314.82KiB at   10.96MiB/s ETA 00:00
+[download] 100% of  314.82KiB in 00:00:00 at 3.35MiB/s   
+clip_exit=0
+clip_bytes=322379
+/tmp/isp2-clip.mp4: ISO Media, MPEG v4 system, Dynamic Adaptive Streaming over HTTP
+=== sustained YouTube transfer ===
+[youtube] Extracting URL: https://www.youtube.com/watch?v=aqz-KE-bpKQ
+[youtube] aqz-KE-bpKQ: Downloading webpage
+[youtube] aqz-KE-bpKQ: Downloading visionos player API JSON
+[youtube] aqz-KE-bpKQ: Downloading m3u8 information
+[info] aqz-KE-bpKQ: Downloading 1 format(s): 396
+[download] Destination: /tmp/isp2-sustained.mp4
+
+[download]   0.0% of   14.59MiB at  481.94KiB/s ETA 00:31
+[download]   0.0% of   14.59MiB at  320.80KiB/s ETA 00:46
+[download]   0.0% of   14.59MiB at  732.54KiB/s ETA 00:20
+[download]   0.1% of   14.59MiB at    1.50MiB/s ETA 00:09
+[download]   0.2% of   14.59MiB at    3.02MiB/s ETA 00:04
+[download]   0.4% of   14.59MiB at    3.74MiB/s ETA 00:03
+[download]   0.9% of   14.59MiB at    5.47MiB/s ETA 00:02
+[download]   1.7% of   14.59MiB at    9.20MiB/s ETA 00:01
+[download]   3.4% of   14.59MiB at   13.58MiB/s ETA 00:01
+[download]   6.8% of   14.59MiB at   21.31MiB/s ETA 00:00
+[download]  13.7% of   14.59MiB at   32.40MiB/s ETA 00:00
+[download]  27.4% of   14.59MiB at   21.29MiB/s ETA 00:00
+[download]  54.8% of   14.59MiB at   20.12MiB/s ETA 00:00
+[download]  65.7% of   14.59MiB at   23.05MiB/s ETA 00:00
+[download]  65.7% of   14.59MiB at  Unknown B/s ETA Unknown
+[download]  65.7% of   14.59MiB at  Unknown B/s ETA Unknown
+[download]  65.7% of   14.59MiB at  Unknown B/s ETA Unknown
+[download]  65.8% of   14.59MiB at  Unknown B/s ETA Unknown
+[download]  65.9% of   14.59MiB at    5.60MiB/s ETA 00:00  
+[download]  66.1% of   14.59MiB at    5.32MiB/s ETA 00:00
+[download]  66.5% of   14.59MiB at    6.98MiB/s ETA 00:00
+[download]  67.4% of   14.59MiB at   10.37MiB/s ETA 00:00
+[download]  69.1% of   14.59MiB at   15.16MiB/s ETA 00:00
+[download]  72.5% of   14.59MiB at   22.61MiB/s ETA 00:00
+[download]  79.4% of   14.59MiB at   24.91MiB/s ETA 00:00
+[download]  93.1% of   14.59MiB at   26.65MiB/s ETA 00:00
+[download] 100.0% of   14.59MiB at   25.97MiB/s ETA 00:00
+[download] 100% of   14.59MiB in 00:00:00 at 21.29MiB/s  
+sustained_exit=0
+sustained_bytes=15298808
+/tmp/isp2-sustained.mp4: ISO Media, MPEG v4 system, Dynamic Adaptive Streaming over HTTP
+WARNING: [youtube] No supported JavaScript runtime could be found. Only deno is enabled by default; to use another runtime add  --js-runtimes RUNTIME[:PATH]  to your command/config. YouTube extraction without a JS runtime has been deprecated, and some formats may be missing. See  https://github.com/yt-dlp/yt-dlp/wiki/EJS  for details on installing one
+WARNING: [youtube] No supported JavaScript runtime could be found. Only deno is enabled by default; to use another runtime add  --js-runtimes RUNTIME[:PATH]  to your command/config. YouTube extraction without a JS runtime has been deprecated, and some formats may be missing. See  https://github.com/yt-dlp/yt-dlp/wiki/EJS  for details on installing one

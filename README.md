@@ -1,20 +1,92 @@
 # zapret2-openwrt
 
-One measured DPI-bypass strategy for **zapret2** (`nfqws2`) on OpenWrt and other
-Linux routers. Discord, YouTube, X/Twitter, Proton, Cloudflare CDNs and the
-Twitch emote services.
+The default **flat** strategy is a measured DPI bypass for **zapret2** (`nfqws2`)
+on OpenWrt and other Linux routers: Discord, YouTube, X/Twitter, Proton,
+Cloudflare CDNs and Twitch emote services.
 
 This is the zapret2 successor to
 [zapret-openwrt](https://github.com/rikkichy/zapret-openwrt). That repo shipped
 19 alternative strategies for zapret v1 and asked you to guess which one your
-ISP needed. This one ships **a single strategy that was measured**, and nothing
-else.
+ISP needed. Here, **flat** remains the installation default. The second provider's
+**sky** candidate is a separate [Docker-only experiment](#sky--docker-only-candidate).
 
 > **zapret2 only.** `nfqws2` is a different engine from v1 `nfqws` — the
 > `--dpi-desync=*` options no longer exist; strategies are Lua calls. This repo
 > will not work against a zapret v1 install.
 
+## sky — Docker-only candidate
+
+**Docker only.** Nothing in the existing installer or service manager selects
+`sky`; the `flat` installation and runtime behavior are unchanged.
+
+The candidate, narrow YouTube/Discord hostlists, runner, and acceptance probe live
+in [`strategies/sky/`](strategies/sky/). Its Dockerfile builds the measured
+upstream revision inside the image and includes the existing Steam fake blob.
+It does not require a sibling source checkout or a bare-metal zapret2 install.
+The current image targets **Linux ARM64**, matching the measured rig.
+
+### Running sky
+
+Use a dedicated Linux Docker host with a packet-preserving network path.
+On macOS, use Docker **inside the existing Lima `zapret` VM with vzNAT** and
+the checkout mounted there, not Docker Desktop/default userspace networking.
+Run these commands from this repository's root:
+
+```sh
+limactl start --tty=false zapret
+limactl shell zapret sudo docker build \
+  -f strategies/sky/Dockerfile -t zapret2-sky .
+limactl shell zapret sudo docker run --rm --init --name zapret-sky \
+  --privileged --network host zapret2-sky
+```
+
+On a Linux ARM64 Docker host, use the same `docker build` and `docker run`
+commands without the `limactl shell zapret sudo` prefix.
+
+The default command runs five fresh body-completion checks per URL/protocol,
+then stops. A failed check returns nonzero. The container removes its own
+`zapret_sky` nftables table and restores the changed conntrack sysctl on exit.
+It refuses an existing table rather than deleting another experiment.
+Do not run overlapping experiments in the same host network namespace.
+`--privileged --network host` affects the Linux host's network, not just an
+isolated Docker bridge; use the dedicated VM rather than an application server.
+
+To obtain an off-control, run the probe without the strategy entrypoint:
+
+```sh
+limactl shell zapret sudo docker run --rm --network host \
+  --entrypoint python3 zapret2-sky /sky/probe.py
+```
+
+Docker host networking means **the Linux VM**, not macOS. These commands do not
+route the Mac's browser or Discord application through the candidate.
+The runner rejects execution outside Docker. Do not install `sky` bare-metal.
+
+### Evidence and limits
+
+[`results.json`](strategies/sky/results.json) indexes the retained measurements,
+including failures, source revision, and original runtime versions. The
+59/60 body result belongs to the original test image, not an assertion that
+every subsequent Docker rebuild or provider route has identical behavior.
+
+- Unlike `flat`, `sky` uses **TCP timestamp fooling**, not a TTL-4 TLS fake.
+  It requires a negotiated TCP Timestamp option; without one, the fake can
+  corrupt the connection. See the exact profiles in
+  [`strategy.args`](strategies/sky/strategy.args).
+- YouTube and Discord have separate QUIC profiles. HTTP/3 checks prohibit
+  fallback to TCP, so a successful HTTPS request is not misreported as QUIC.
+- One TLS 1.2 thumbnail request failed in the five-repeat run. Do not erase
+  that failure with retries or call this production-stable.
+- Real YouTube media transfers and an unauthenticated Discord Gateway
+  WebSocket Hello passed. Voice discovery/STUN were verified only with a
+  loopback packet receiver; **live voice and screenshare remain unverified**.
+- IPv4 only. `discordstatus.com` remains outside the core candidate with its
+  body stall unresolved. Timestamp-less clients and real client routing need
+  verification before promotion.
+
 ## Install
+These instructions install **flat**, not the Docker-only `sky` candidate.
+
 
 On the router, over SSH:
 

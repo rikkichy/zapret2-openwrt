@@ -1,0 +1,10 @@
+# Core client, gateway, CDN, invites, and media. Not generic Cloudflare traffic.
+discord.com
+discord.gg
+discordapp.com
+discordapp.net
+discordcdn.com
+discord.media
+discordactivities.com
+discord.gift
+dis.gd

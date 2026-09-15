@@ -1,0 +1,32 @@
+net.netfilter.nf_conntrack_tcp_be_liberal = 1
+{"candidate": "multidisorder", "url": "https://example.com/", "exit": 0, "status": 200, "bytes": 559, "ip": "8.6.112.0", "seconds": 0.067715, "error": ""}
+{"candidate": "multidisorder", "url": "https://www.youtube.com/", "exit": 0, "status": 200, "bytes": 891569, "ip": "142.251.155.4", "seconds": 0.236594, "error": ""}
+{"candidate": "multidisorder", "url": "https://i.ytimg.com/vi/jNQXAC9IVRw/hqdefault.jpg", "exit": 0, "status": 200, "bytes": 15921, "ip": "209.85.233.119", "seconds": 0.076999, "error": ""}
+{"candidate": "multidisorder", "url": "https://discord.com/api/v10/gateway", "exit": 0, "status": 200, "bytes": 35, "ip": "162.159.137.232", "seconds": 0.078105, "error": ""}
+{"candidate": "multidisorder", "url": "https://discordstatus.com/", "exit": 28, "status": 0, "bytes": 0, "ip": "52.222.136.56", "seconds": 10.005908, "error": "curl: (28) Operation timed out after 10005 milliseconds with 0 bytes received"}
+{"candidate": "google-ttl2", "url": "https://example.com/", "exit": 0, "status": 200, "bytes": 559, "ip": "8.6.112.0", "seconds": 0.107582, "error": ""}
+{"candidate": "google-ttl2", "url": "https://www.youtube.com/", "exit": 0, "status": 200, "bytes": 887040, "ip": "142.251.154.4", "seconds": 0.315789, "error": ""}
+{"candidate": "google-ttl2", "url": "https://i.ytimg.com/vi/jNQXAC9IVRw/hqdefault.jpg", "exit": 0, "status": 200, "bytes": 15921, "ip": "173.194.222.119", "seconds": 0.077095, "error": ""}
+{"candidate": "google-ttl2", "url": "https://discord.com/api/v10/gateway", "exit": 0, "status": 200, "bytes": 35, "ip": "162.159.135.232", "seconds": 0.084731, "error": ""}
+{"candidate": "google-ttl2", "url": "https://discordstatus.com/", "exit": 28, "status": 0, "bytes": 0, "ip": "52.222.136.57", "seconds": 10.005623, "error": "curl: (28) Operation timed out after 10005 milliseconds with 0 bytes received"}
+{"candidate": "google-ttl3", "url": "https://example.com/", "exit": 28, "status": 0, "bytes": 0, "ip": "", "seconds": 6.006187, "error": "curl: (28) Connection timed out after 6005 milliseconds"}
+{"candidate": "google-ttl3", "url": "https://www.youtube.com/", "exit": 28, "status": 0, "bytes": 0, "ip": "", "seconds": 6.006559, "error": "curl: (28) Connection timed out after 6005 milliseconds"}
+{"candidate": "google-ttl3", "url": "https://i.ytimg.com/vi/jNQXAC9IVRw/hqdefault.jpg", "exit": 28, "status": 0, "bytes": 0, "ip": "", "seconds": 6.005373, "error": "curl: (28) Connection timed out after 6004 milliseconds"}
+{"candidate": "google-ttl3", "url": "https://discord.com/api/v10/gateway", "exit": 28, "status": 0, "bytes": 0, "ip": "", "seconds": 6.00369, "error": "curl: (28) Connection timed out after 6002 milliseconds"}
+{"candidate": "google-ttl3", "url": "https://discordstatus.com/", "exit": 28, "status": 0, "bytes": 0, "ip": "", "seconds": 6.003136, "error": "curl: (28) Connection timed out after 6001 milliseconds"}
+{"candidate": "google-ttl4", "url": "https://example.com/", "exit": 28, "status": 0, "bytes": 0, "ip": "", "seconds": 6.005287, "error": "curl: (28) Connection timed out after 6003 milliseconds"}
+{"candidate": "google-ttl4", "url": "https://www.youtube.com/", "exit": 28, "status": 0, "bytes": 0, "ip": "", "seconds": 6.007615, "error": "curl: (28) Connection timed out after 6006 milliseconds"}
+{"candidate": "google-ttl4", "url": "https://i.ytimg.com/vi/jNQXAC9IVRw/hqdefault.jpg", "exit": 28, "status": 0, "bytes": 0, "ip": "", "seconds": 6.006595, "error": "curl: (28) Connection timed out after 6005 milliseconds"}
+{"candidate": "google-ttl4", "url": "https://discord.com/api/v10/gateway", "exit": 28, "status": 0, "bytes": 0, "ip": "", "seconds": 6.004135, "error": "curl: (28) Connection timed out after 6002 milliseconds"}
+{"candidate": "google-ttl4", "url": "https://discordstatus.com/", "exit": 28, "status": 0, "bytes": 0, "ip": "", "seconds": 6.002955, "error": "curl: (28) Connection timed out after 6001 milliseconds"}
+{"candidate": "google-ttl5", "url": "https://example.com/", "exit": 28, "status": 0, "bytes": 0, "ip": "", "seconds": 6.002782, "error": "curl: (28) Connection timed out after 6001 milliseconds"}
+{"candidate": "google-ttl5", "url": "https://www.youtube.com/", "exit": 28, "status": 0, "bytes": 0, "ip": "", "seconds": 6.003748, "error": "curl: (28) Connection timed out after 6002 milliseconds"}
+{"candidate": "google-ttl5", "url": "https://i.ytimg.com/vi/jNQXAC9IVRw/hqdefault.jpg", "exit": 28, "status": 0, "bytes": 0, "ip": "", "seconds": 6.003117, "error": "curl: (28) Connection timed out after 6002 milliseconds"}
+{"candidate": "google-ttl5", "url": "https://discord.com/api/v10/gateway", "exit": 28, "status": 0, "bytes": 0, "ip": "", "seconds": 6.003796, "error": "curl: (28) Connection timed out after 6002 milliseconds"}
+{"candidate": "google-ttl5", "url": "https://discordstatus.com/", "exit": 28, "status": 0, "bytes": 0, "ip": "", "seconds": 6.005852, "error": "curl: (28) Connection timed out after 6004 milliseconds"}
+{"candidate": "google-ttl6", "url": "https://example.com/", "exit": 28, "status": 0, "bytes": 0, "ip": "", "seconds": 6.003933, "error": "curl: (28) Connection timed out after 6002 milliseconds"}
+{"candidate": "google-ttl6", "url": "https://www.youtube.com/", "exit": 28, "status": 0, "bytes": 0, "ip": "", "seconds": 6.004363, "error": "curl: (28) Connection timed out after 6002 milliseconds"}
+{"candidate": "google-ttl6", "url": "https://i.ytimg.com/vi/jNQXAC9IVRw/hqdefault.jpg", "exit": 28, "status": 0, "bytes": 0, "ip": "", "seconds": 6.003722, "error": "curl: (28) Connection timed out after 6002 milliseconds"}
+{"candidate": "google-ttl6", "url": "https://discord.com/api/v10/gateway", "exit": 28, "status": 0, "bytes": 0, "ip": "", "seconds": 6.003428, "error": "curl: (28) Connection timed out after 6002 milliseconds"}
+{"candidate": "google-ttl6", "url": "https://discordstatus.com/", "exit": 28, "status": 0, "bytes": 0, "ip": "", "seconds": 6.004693, "error": "curl: (28) Connection timed out after 6003 milliseconds"}
+net.netfilter.nf_conntrack_tcp_be_liberal = 0

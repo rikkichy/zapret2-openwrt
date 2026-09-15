@@ -1,0 +1,124 @@
+net.netfilter.nf_conntrack_tcp_be_liberal = 1
+=== pass ===
+example.com status=200 bytes=559
+self-built version Aug 22 2026 07:33:15 lua_compat_ver 6
+
+we have 1 user defined desync profile(s) and default low priority profile 0
+we have 0 user defined desync template(s)
+Running as UID=2147483647 GID=2147483647
+initializing raw sockets bind-fix4=0 bind-fix6=0
+LUA v5.1 LuaJIT 2.1.0-beta3
+JIT: ON fold cse dce fwd dse narrow loop abc sink fuse
+opening nfq library handle
+unbinding existing nf_queue handler for AF_INET (if any)
+binding nfnetlink_queue as nf_queue handler for AF_INET
+unbinding existing nf_queue handler for AF_INET6 (if any)
+binding nfnetlink_queue as nf_queue handler for AF_INET6
+binding this socket to queue '251'
+setting copy_packet mode
+TERM received !
+quit requested
+unbinding from queue 251
+closing nfq library handle
+=== ip_ttl=1 ===
+example.com status=200 bytes=559
+self-built version Aug 22 2026 07:33:15 lua_compat_ver 6
+
+we have 1 user defined desync profile(s) and default low priority profile 0
+we have 0 user defined desync template(s)
+Running as UID=2147483647 GID=2147483647
+initializing raw sockets bind-fix4=0 bind-fix6=0
+LUA v5.1 LuaJIT 2.1.0-beta3
+JIT: ON fold cse dce fwd dse narrow loop abc sink fuse
+opening nfq library handle
+unbinding existing nf_queue handler for AF_INET (if any)
+binding nfnetlink_queue as nf_queue handler for AF_INET
+unbinding existing nf_queue handler for AF_INET6 (if any)
+binding nfnetlink_queue as nf_queue handler for AF_INET6
+binding this socket to queue '251'
+setting copy_packet mode
+TERM received !
+quit requested
+unbinding from queue 251
+closing nfq library handle
+=== ip_ttl=2 ===
+example.com status=200 bytes=559
+self-built version Aug 22 2026 07:33:15 lua_compat_ver 6
+
+we have 1 user defined desync profile(s) and default low priority profile 0
+we have 0 user defined desync template(s)
+Running as UID=2147483647 GID=2147483647
+initializing raw sockets bind-fix4=0 bind-fix6=0
+LUA v5.1 LuaJIT 2.1.0-beta3
+JIT: ON fold cse dce fwd dse narrow loop abc sink fuse
+opening nfq library handle
+unbinding existing nf_queue handler for AF_INET (if any)
+binding nfnetlink_queue as nf_queue handler for AF_INET
+unbinding existing nf_queue handler for AF_INET6 (if any)
+binding nfnetlink_queue as nf_queue handler for AF_INET6
+binding this socket to queue '251'
+setting copy_packet mode
+TERM received !
+quit requested
+unbinding from queue 251
+closing nfq library handle
+=== ip_ttl=4 ===
+example.com status=000 bytes=0
+self-built version Aug 22 2026 07:33:15 lua_compat_ver 6
+
+we have 1 user defined desync profile(s) and default low priority profile 0
+we have 0 user defined desync template(s)
+Running as UID=2147483647 GID=2147483647
+initializing raw sockets bind-fix4=0 bind-fix6=0
+LUA v5.1 LuaJIT 2.1.0-beta3
+JIT: ON fold cse dce fwd dse narrow loop abc sink fuse
+opening nfq library handle
+unbinding existing nf_queue handler for AF_INET (if any)
+binding nfnetlink_queue as nf_queue handler for AF_INET
+unbinding existing nf_queue handler for AF_INET6 (if any)
+binding nfnetlink_queue as nf_queue handler for AF_INET6
+binding this socket to queue '251'
+setting copy_packet mode
+TERM received !
+quit requested
+unbinding from queue 251
+closing nfq library handle
+=== multidisorder ===
+example.com status=200 bytes=559
+self-built version Aug 22 2026 07:33:15 lua_compat_ver 6
+
+we have 1 user defined desync profile(s) and default low priority profile 0
+we have 0 user defined desync template(s)
+Running as UID=2147483647 GID=2147483647
+initializing raw sockets bind-fix4=0 bind-fix6=0
+LUA v5.1 LuaJIT 2.1.0-beta3
+JIT: ON fold cse dce fwd dse narrow loop abc sink fuse
+opening nfq library handle
+unbinding existing nf_queue handler for AF_INET (if any)
+binding nfnetlink_queue as nf_queue handler for AF_INET
+unbinding existing nf_queue handler for AF_INET6 (if any)
+binding nfnetlink_queue as nf_queue handler for AF_INET6
+binding this socket to queue '251'
+setting copy_packet mode
+TERM received !
+quit requested
+unbinding from queue 251
+closing nfq library handle
+table inet isp2_fidelity {
+	chain post {
+		type filter hook postrouting priority srcnat + 1; policy accept;
+		meta mark & 0x40000000 == 0x00000000 tcp dport 443 ct original packets 1-20 counter packets 76 bytes 20588 queue flags bypass to 251
+	}
+
+	chain pre {
+		type filter hook prerouting priority dstnat - 1; policy accept;
+		meta mark & 0x40000000 == 0x00000000 tcp sport 443 ct reply packets 1-10 counter packets 41 bytes 26526 queue flags bypass to 251
+	}
+
+	chain raw {
+		type filter hook output priority -401; policy accept;
+		meta mark & 0x40000000 != 0x00000000 notrack
+	}
+}
+net.netfilter.nf_conntrack_tcp_be_liberal = 0
+curl: (28) Connection timed out after 6006 milliseconds

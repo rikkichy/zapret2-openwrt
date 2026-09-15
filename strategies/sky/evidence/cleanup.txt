@@ -1,0 +1,6 @@
+table ip nat
+table ip filter
+table ip6 nat
+table ip6 filter
+net.netfilter.nf_conntrack_tcp_be_liberal = 0
+net.ipv4.tcp_timestamps = 1
