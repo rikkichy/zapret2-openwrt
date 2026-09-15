@@ -134,7 +134,6 @@ fetch_url() {
 }
 
 STRATEGY_FILE="50-zapret2-bypass"
-STRATEGY_NAME="measured-2026-08-22"
 
 PERSIST_DIR="/usr/lib/zapret2-openwrt"
 SYMLINK_PATH="/usr/bin/zapret2"
@@ -147,21 +146,33 @@ register_command() {
 
     print_info "$(t cmd_registering)"
 
-    rm -rf "$PERSIST_DIR" 2>/dev/null
-    if ! mkdir -p "$PERSIST_DIR" 2>/dev/null; then
+    local stage
+    stage=$(mktemp -d "${PERSIST_DIR}.XXXXXX") || { print_warn "$(t cmd_register_fail)"; return 1; }
+    if ! mkdir "$stage/new" ||
+        ! cp -r "$SCRIPT_DIR"/. "$stage/new/" ||
+        ! chmod +x "$stage/new/service.sh"; then
+        rm -rf "$stage"
         print_warn "$(t cmd_register_fail)"
         return 1
     fi
-    if ! cp -r "$SCRIPT_DIR"/. "$PERSIST_DIR/" 2>/dev/null; then
+    if [ -e "$PERSIST_DIR" ] && ! mv "$PERSIST_DIR" "$stage/old"; then
+        rm -rf "$stage"
         print_warn "$(t cmd_register_fail)"
         return 1
     fi
-    chmod +x "$PERSIST_DIR/service.sh" 2>/dev/null
-
-    if ! ln -sf "$PERSIST_DIR/service.sh" "$SYMLINK_PATH" 2>/dev/null; then
+    if ! mv "$stage/new" "$PERSIST_DIR"; then
+        [ ! -d "$stage/old" ] || mv "$stage/old" "$PERSIST_DIR"
         print_warn "$(t cmd_register_fail)"
+        print_warn "$(printf "$(t cmd_backup_fmt)" "$stage")"
         return 1
     fi
+    if { [ -e "$SYMLINK_PATH" ] && [ ! -L "$SYMLINK_PATH" ]; } ||
+        ! ln -sf "$PERSIST_DIR/service.sh" "$SYMLINK_PATH"; then
+        print_warn "$(t cmd_register_fail)"
+        print_warn "$(printf "$(t cmd_backup_fmt)" "$stage")"
+        return 1
+    fi
+    rm -rf "$stage"
 
     print_ok "$(t cmd_registered)"
     return 0
@@ -224,7 +235,7 @@ install_zapret_base() {
 
     if [ -n "$INIT_TYPE" ]; then
         print_info "$(t stopping_pre_setup)"
-        zapret_cmd stop >/dev/null 2>&1 || true
+        zapret_cmd stop || { print_fail "$(t stop_failed)"; return 1; }
     fi
 
     return 0
@@ -245,14 +256,16 @@ zapret_cmd() {
 get_active_strategy() {
     ACTIVE_STRATEGY="none"
     ACTIVE_FILE=""
-    if [ -z "$CUSTOM_D" ]; then return; fi
-    for f in "$CUSTOM_D"/50-zapret2-bypass; do
-        [ -f "$f" ] || continue
-        ACTIVE_FILE="$f"
-        ACTIVE_STRATEGY=$(sed -n 's/^# Strategy: *//p' "$f" | head -1)
-        [ -z "$ACTIVE_STRATEGY" ] && ACTIVE_STRATEGY="$(basename "$f")"
-        return
-    done
+    [ -n "$CUSTOM_D" ] && [ -f "$CUSTOM_D/$STRATEGY_FILE" ] || return 0
+    ACTIVE_FILE="$CUSTOM_D/$STRATEGY_FILE"
+    ACTIVE_STRATEGY=$(sed -n 's/^Z2B_STRATEGY=//p' "$ACTIVE_FILE" | head -1)
+    [ -n "$ACTIVE_STRATEGY" ] ||
+        ACTIVE_STRATEGY=$(sed -n 's/^# Strategy: *//p' "$ACTIVE_FILE" | head -1)
+    case "$ACTIVE_STRATEGY" in
+        flat*|measured-2026-08-22) ACTIVE_STRATEGY=flat ;;
+        sky) ;;
+        *) ACTIVE_STRATEGY=unknown ;;
+    esac
 }
 
 nfqws_describe() {
@@ -291,82 +304,168 @@ nfqws_describe() {
     fi
 }
 
-copy_lists() {
-    local src="$SCRIPT_DIR/lists"
-    local dst="$ZAPRET_BASE/ipset"
-    local copied=0
-    for f in list-general.txt list-hetzner.txt list-exclude.txt zapret-hosts-user-ipban.txt; do
-        if [ -f "$src/$f" ]; then
-            if [ ! -f "$dst/$f" ]; then
-                cp "$src/$f" "$dst/$f"
-                print_ok "$(printf "$(t copied_fmt)" "$f" "$dst/")"
-                copied=$((copied + 1))
-            fi
-        else
-            print_warn "$(printf "$(t source_missing_fmt)" "$f" "$src/")"
-        fi
+select_strategy() {
+    get_active_strategy
+    SELECTED_STRATEGY="$ACTIVE_STRATEGY"
+    case "$SELECTED_STRATEGY" in flat|sky) ;; *) SELECTED_STRATEGY=flat ;; esac
+    print_info "$(t current_active_fmt)$ACTIVE_STRATEGY"
+    print_info "$(t strategy_limits)"
+    print_info "$(t override_precedence)"
+    printf "\n  1. flat\n  2. sky\n  0. %s\n" "$(t cancel)"
+    while true; do
+        printf "\n  $(t select_strategy_fmt)" "$SELECTED_STRATEGY"
+        read choice </dev/tty || return 1
+        case "$choice" in
+            '') return 0 ;;
+            1|flat) SELECTED_STRATEGY=flat; return 0 ;;
+            2|sky) SELECTED_STRATEGY=sky; return 0 ;;
+            0|q|Q) print_info "$(t cancelled)"; return 1 ;;
+            *) print_warn "$(t invalid_choice)" ;;
+        esac
     done
-    if [ "$copied" -eq 0 ]; then
-        print_info "$(t all_lists_present)"
+}
+
+# Stage only missing user assets; existing lists and fake packets are never replaced.
+stage_asset() {
+    local rel="$1" src="$2"
+    [ -f "$ZAPRET_BASE/$rel" ] && [ -r "$ZAPRET_BASE/$rel" ] && return 0
+    [ ! -e "$ZAPRET_BASE/$rel" ] && [ ! -L "$ZAPRET_BASE/$rel" ] || return 1
+    [ -r "$src" ] || { print_fail "$(printf "$(t file_not_found_fmt)" "$src")"; return 1; }
+    mkdir -p "$stage/new/$(dirname "$rel")" &&
+        cp "$src" "$stage/new/$rel" || return 1
+    assets="$assets $rel"
+}
+
+prepare_strategy() {
+    local f rel base_escaped
+    mkdir -p "$stage/new" "$stage/old" || return 1
+    sed -e "s/^# Strategy: flat$/# Strategy: $SELECTED_STRATEGY/" \
+        -e "s/^Z2B_STRATEGY=flat$/Z2B_STRATEGY=$SELECTED_STRATEGY/" \
+        "$SCRIPT_DIR/custom.d/$STRATEGY_FILE" > "$stage/new/entrypoint" || return 1
+    grep -qx "# Strategy: $SELECTED_STRATEGY" "$stage/new/entrypoint" &&
+        grep -qx "Z2B_STRATEGY=$SELECTED_STRATEGY" "$stage/new/entrypoint" || return 1
+    chmod 644 "$stage/new/entrypoint" || return 1
+    [ ! -e "$CUSTOM_D/$STRATEGY_FILE" ] ||
+        cp -p "$CUSTOM_D/$STRATEGY_FILE" "$stage/old/entrypoint" || return 1
+    stage_asset ipset/list-exclude.txt "$SCRIPT_DIR/lists/list-exclude.txt" || return 1
+    stage_asset files/fake/quic_initial_steamcommunity_com.bin \
+        "$SCRIPT_DIR/files/fake/quic_initial_steamcommunity_com.bin" || return 1
+    for f in lua/zapret-lib.lua lua/zapret-antidpi.lua files/fake/quic_initial_www_google_com.bin; do
+        [ -s "$ZAPRET_BASE/$f" ] && [ -r "$ZAPRET_BASE/$f" ] ||
+            { print_fail "$(printf "$(t file_not_found_fmt)" "$ZAPRET_BASE/$f")"; return 1; }
+    done
+    if [ "$SELECTED_STRATEGY" = sky ]; then
+        for f in youtube.txt discord.txt proton.txt anime.txt; do
+            stage_asset "strategies/sky/$f" "$SCRIPT_DIR/strategies/sky/$f" || return 1
+        done
+        rel=strategies/sky/strategy.args
+        mkdir -p "$stage/new/strategies/sky" "$stage/old/strategies/sky" || return 1
+        base_escaped=$(printf '%s\n' "$ZAPRET_BASE" | sed 's/[\\&|]/\\&/g')
+        sed -e '/^--qnum=/d' -e '/^--fwmark=/d' -e '/^--lua-init=/d' \
+            -e "s|/opt/zapret2/|$base_escaped/|g" \
+            -e "s|^--hostlist=/sky/|--hostlist=$base_escaped/strategies/sky/|" \
+            "$SCRIPT_DIR/strategies/sky/strategy.args" |
+            sed "/^--filter-l7=\\(tls\\|quic\\)$/a\\
+--hostlist-exclude=$base_escaped/ipset/list-exclude.txt
+" > "$stage/new/$rel" || return 1
+        [ -s "$stage/new/$rel" ] &&
+            grep -q '^--filter-l7=tls$' "$stage/new/$rel" &&
+            grep -q '^--filter-l7=quic$' "$stage/new/$rel" || return 1
+        [ ! -e "$ZAPRET_BASE/$rel" ] ||
+            cp -p "$ZAPRET_BASE/$rel" "$stage/old/$rel" || return 1
+        assets="$assets $rel"
+    else
+        for f in list-general.txt list-hetzner.txt zapret-hosts-user-ipban.txt; do
+            stage_asset "ipset/$f" "$SCRIPT_DIR/lists/$f" || return 1
+        done
+        [ -s "$ZAPRET_BASE/files/fake/tls_clienthello_iana_org_bigsize.bin" ] ||
+            { print_fail "$(printf "$(t file_not_found_fmt)" "$ZAPRET_BASE/files/fake/tls_clienthello_iana_org_bigsize.bin")"; return 1; }
     fi
 }
 
-copy_bins() {
-    local src="$SCRIPT_DIR/files/fake"
-    local dst="$ZAPRET_BASE/files/fake"
-    local copied=0
-    for f in quic_initial_steamcommunity_com.bin; do
-        if [ -f "$src/$f" ]; then
-            if [ ! -f "$dst/$f" ]; then
-                cp "$src/$f" "$dst/$f"
-                print_ok "$(printf "$(t copied_fmt)" "$f" "$dst/")"
-                copied=$((copied + 1))
-            fi
+restore_strategy() {
+    local rel failed=0
+    for rel in $assets; do
+        if [ -f "$stage/old/$rel" ]; then
+            cp -p "$stage/old/$rel" "$ZAPRET_BASE/$rel" || failed=1
         else
-            print_warn "$(printf "$(t source_missing_fmt)" "$f" "$src/")"
+            rm -f "$ZAPRET_BASE/$rel" || failed=1
         fi
     done
-    [ "$copied" -eq 0 ] && print_info "$(t all_bins_present)"
+    if [ -f "$stage/old/entrypoint" ]; then
+        cp -p "$stage/old/entrypoint" "$CUSTOM_D/$STRATEGY_FILE" || failed=1
+    else
+        rm -f "$CUSTOM_D/$STRATEGY_FILE" || failed=1
+    fi
+    [ "$failed" = 0 ]
 }
 
-action_install_strategy()
-{
+deploy_strategy() {
+    local stage assets="" rel failed=0 was_running=0 start_now=0
+    [ -n "$ZAPRET_BASE" ] && [ -n "$CUSTOM_D" ] && [ -n "$INIT_TYPE" ] ||
+        { print_fail "$(t install_prerequisites)"; return 1; }
+    # nfqws options are whitespace-delimited by upstream do_nfqws.
+    case "$ZAPRET_BASE" in *[[:space:]]*) print_fail "$(t base_path_invalid)"; return 1 ;; esac
+    stage=$(mktemp -d "$ZAPRET_BASE/.z2b-install.XXXXXX") || return 1
+    if ! prepare_strategy; then
+        print_fail "$(t prepare_failed)"
+        rm -rf "$stage"
+        return 1
+    fi
+    printf "\n  %s" "$(t start_now_q)"
+    read yn </dev/tty || { rm -rf "$stage"; return 1; }
+    case "$yn" in y|Y|yes|Yes|YES|'') start_now=1 ;; esac
+    pidof nfqws2 >/dev/null 2>&1 && was_running=1
+    print_info "$(t stopping)"
+    # Stop while the old entrypoint and options still describe the old firewall.
+    if ! zapret_cmd stop; then
+        print_fail "$(t stop_failed)"
+        rm -rf "$stage"
+        return 1
+    fi
+    for rel in $assets; do
+        mkdir -p "$ZAPRET_BASE/$(dirname "$rel")" &&
+            mv -f "$stage/new/$rel" "$ZAPRET_BASE/$rel" || { failed=1; break; }
+    done
+    if [ "$failed" = 0 ]; then
+        mv -f "$stage/new/entrypoint" "$CUSTOM_D/$STRATEGY_FILE" || failed=1
+    fi
+    if [ "$failed" = 0 ] && [ "$start_now" = 1 ]; then
+        print_info "$(t starting)"
+        if ! zapret_cmd start; then
+            print_fail "$(t start_failed)"
+            if ! zapret_cmd stop; then
+                print_fail "$(printf "$(t recovery_required_fmt)" "$stage")"
+                return 1
+            fi
+            failed=1
+        fi
+    fi
+    if [ "$failed" = 1 ]; then
+        if restore_strategy; then
+            print_warn "$(t install_restored)"
+            if [ "$was_running" = 1 ] && ! zapret_cmd start; then
+                print_fail "$(t start_failed)"
+                print_fail "$(printf "$(t recovery_required_fmt)" "$stage")"
+                return 1
+            fi
+            rm -rf "$stage"
+        else
+            print_fail "$(printf "$(t recovery_required_fmt)" "$stage")"
+        fi
+        return 1
+    fi
+    rm -rf "$stage"
+    print_ok "$(printf "$(t installed_to_fmt)" "$SELECTED_STRATEGY" "$CUSTOM_D/$STRATEGY_FILE")"
+    [ "$start_now" = 1 ] || print_info "$(t installed_stopped)"
+}
+
+action_install_strategy() {
     clear
     printf "\n  ${C_BOLD}%s${C_RESET}\n\n" "$(t h_install)"
-
-    if [ -z "$ZAPRET_BASE" ]; then
-        print_fail "$(t zb_not_detected)"
-        pause_prompt; return
+    if select_strategy; then
+        deploy_strategy
     fi
-    if [ -z "$CUSTOM_D" ]; then
-        print_fail "$(printf "$(t customd_missing_in_fmt)" "$ZAPRET_BASE")"
-        pause_prompt; return
-    fi
-
-    local src="$SCRIPT_DIR/custom.d/$STRATEGY_FILE"
-    if [ ! -f "$src" ]; then
-        print_fail "$(printf "$(t file_not_found_fmt)" "$src")"
-        pause_prompt; return
-    fi
-
-    print_info "$(printf "$(t installing_strategy_fmt)" "$STRATEGY_NAME")"
-    copy_lists
-    copy_bins
-
-    rm -f "$CUSTOM_D/$STRATEGY_FILE"
-    cp "$src" "$CUSTOM_D/"
-    print_ok "$(printf "$(t installed_to_fmt)" "$STRATEGY_FILE" "$CUSTOM_D/")"
-
-    printf "\n  %s" "$(t restart_q)"
-    read yn </dev/tty
-    case "$yn" in
-        y|Y|yes|Yes|YES|'')
-            print_info "$(t restarting)"
-            zapret_cmd restart
-            print_ok "$(t done)"
-            ;;
-    esac
-
     pause_prompt
 }
 
@@ -385,7 +484,20 @@ action_show_active() {
         print_ok "$(printf "$(t strategy_fmt)" "$ACTIVE_STRATEGY")"
         print_info "$(printf "$(t file_fmt)" "$ACTIVE_FILE")"
         printf "\n  ${C_BOLD}%s${C_RESET}\n" "$(t nfqws_options)"
-        sed -n '/^NFQWS2_Z2B_OPT=/,/}"/p' "$ACTIVE_FILE" | sed 's/^/    /'
+        if [ "$ACTIVE_STRATEGY" = sky ]; then
+            if [ -r "$ZAPRET_BASE/strategies/sky/strategy.args" ]; then
+                sed 's/^/    /' "$ZAPRET_BASE/strategies/sky/strategy.args"
+            else
+                print_fail "$(printf "$(t file_not_found_fmt)" "$ZAPRET_BASE/strategies/sky/strategy.args")"
+            fi
+        else
+            sed -n '/^[[:space:]]*NFQWS2_Z2B_OPT="${NFQWS2_Z2B_OPT:-$/,/}"/p' "$ACTIVE_FILE" | sed 's/^/    /'
+        fi
+        print_info "$(t override_precedence)"
+        if [ -r "$ZAPRET_BASE/config" ]; then
+            sed -n '/^[[:space:]]*NFQWS2_Z2B_/p' "$ZAPRET_BASE/config"
+        fi
+        print_info "$(t strategy_limits)"
     fi
 
     pause_prompt
@@ -459,6 +571,15 @@ action_status() {
     pause_prompt
 }
 
+strategy_lists() {
+    if [ "$ACTIVE_STRATEGY" = sky ]; then
+        printf '%s\n' strategies/sky/youtube.txt strategies/sky/discord.txt \
+            strategies/sky/proton.txt strategies/sky/anime.txt ipset/list-exclude.txt
+    else
+        printf '%s\n' ipset/list-general.txt ipset/list-hetzner.txt ipset/list-exclude.txt
+    fi
+}
+
 action_edit_lists() {
     clear
     printf "\n  ${C_BOLD}%s${C_RESET}\n\n" "$(t h_lists)"
@@ -468,7 +589,8 @@ action_edit_lists() {
         pause_prompt; return
     fi
 
-    local ipset_dir="$ZAPRET_BASE/ipset"
+    get_active_strategy
+    local list_files="$(strategy_lists)" f n=0 count
     local editor=""
     if [ -n "$EDITOR" ]; then
         editor="$EDITOR"
@@ -481,20 +603,24 @@ action_edit_lists() {
         pause_prompt; return
     fi
 
-    printf "$(t list_general_fmt)\n" "$(wc -l < "$ipset_dir/list-general.txt" 2>/dev/null || echo 0)"
-    printf "$(t list_hetzner_fmt)\n" "$(wc -l < "$ipset_dir/list-hetzner.txt" 2>/dev/null || echo 0)"
-    printf "$(t list_exclude_fmt)\n" "$(wc -l < "$ipset_dir/list-exclude.txt" 2>/dev/null || echo 0)"
+    print_info "$(printf "$(t active_strategy_fmt)" "$ACTIVE_STRATEGY")"
+    for f in $list_files; do
+        n=$((n + 1))
+        count=0
+        [ ! -f "$ZAPRET_BASE/$f" ] || count=$(wc -l < "$ZAPRET_BASE/$f")
+        printf "     %s. %s (%s)\n" "$n" "$(basename "$f")" "$count"
+    done
     printf "\n  0. %s\n" "$(t back)"
     printf "\n  %s" "$(t select_list)"
     read choice </dev/tty
 
     local target=""
-    case "$choice" in
-        1) target="$ipset_dir/list-general.txt" ;;
-        2) target="$ipset_dir/list-hetzner.txt" ;;
-        3) target="$ipset_dir/list-exclude.txt" ;;
-        *) return ;;
-    esac
+    n=0
+    for f in $list_files; do
+        n=$((n + 1))
+        [ "$choice" != "$n" ] || target="$ZAPRET_BASE/$f"
+    done
+    [ -n "$target" ] || return
 
     if [ ! -f "$target" ]; then
         print_fail "$(printf "$(t file_not_found_fmt)" "$target")"
@@ -542,23 +668,24 @@ action_diagnostics() {
     fi
 
     printf "\n"
-    for f in list-general.txt list-hetzner.txt list-exclude.txt zapret-hosts-user-ipban.txt; do
-        if [ -f "$ZAPRET_BASE/ipset/$f" ]; then
-            local count=$(wc -l < "$ZAPRET_BASE/ipset/$f" 2>/dev/null)
+    get_active_strategy
+    local files="$(strategy_lists)" count
+    if [ "$ACTIVE_STRATEGY" = sky ]; then
+        files="$files strategies/sky/strategy.args"
+    else
+        files="$files ipset/zapret-hosts-user-ipban.txt files/fake/tls_clienthello_iana_org_bigsize.bin"
+    fi
+    files="$files files/fake/quic_initial_www_google_com.bin files/fake/quic_initial_steamcommunity_com.bin lua/zapret-lib.lua lua/zapret-antidpi.lua"
+    for f in $files; do
+        if [ -r "$ZAPRET_BASE/$f" ]; then
+            count=$(wc -l < "$ZAPRET_BASE/$f")
             print_ok "$(printf "$(t file_entries_fmt)" "$f" "$count")"
         else
-            print_fail "$(printf "$(t file_missing_in_fmt)" "$f" "$ZAPRET_BASE/ipset/")"
+            print_fail "$(printf "$(t file_missing_in_fmt)" "$f" "$ZAPRET_BASE")"
         fi
     done
-
-    printf "\n"
-    for f in quic_initial_www_google_com.bin tls_clienthello_iana_org_bigsize.bin quic_initial_steamcommunity_com.bin; do
-        if [ -f "$ZAPRET_BASE/files/fake/$f" ]; then
-            print_ok "$f"
-        else
-            print_fail "$(printf "$(t file_missing_in_fmt)" "$f" "$ZAPRET_BASE/files/fake/")"
-        fi
-    done
+    print_info "$(t strategy_limits)"
+    print_info "$(t override_precedence)"
 
     printf "\n"
     set -- $(nfqws_describe)
@@ -639,40 +766,37 @@ action_uninstall() {
     esac
 
     printf "\n"
-    if [ -n "$INIT_TYPE" ]; then
+    get_active_strategy
+    if [ -n "$ACTIVE_FILE" ]; then
         print_info "$(t stopping)"
-        zapret_cmd stop >/dev/null 2>&1 || true
-        print_ok "$(t stopped)"
-    else
-        print_info "$(t no_init)"
-    fi
-
-    if [ -n "$CUSTOM_D" ] && [ -d "$CUSTOM_D" ]; then
-        local removed_any=0
-        for f in "$CUSTOM_D"/50-zapret2-bypass; do
-            [ -f "$f" ] || continue
-            rm -f "$f" 2>/dev/null && removed_any=1
-        done
-        if [ "$removed_any" = "1" ]; then
-            print_ok "$(t strategy_removed)"
-        else
-            print_info "$(t no_strategy_to_remove)"
+        if ! zapret_cmd stop; then
+            print_fail "$(t stop_failed)"
+            pause_prompt; return 1
         fi
+        if ! rm -f "$ACTIVE_FILE"; then
+            print_fail "$(printf "$(t remove_failed_fmt)" "$ACTIVE_FILE")"
+            pause_prompt; return 1
+        fi
+        print_ok "$(t strategy_removed)"
+    fi
+    if [ -n "$ZAPRET_BASE" ] && ! rm -f "$ZAPRET_BASE/strategies/sky/strategy.args"; then
+        print_fail "$(printf "$(t remove_failed_fmt)" "$ZAPRET_BASE/strategies/sky/strategy.args")"
+        pause_prompt; return 1
     fi
 
-    if [ -L "$SYMLINK_PATH" ] || [ -e "$SYMLINK_PATH" ]; then
-        rm -f "$SYMLINK_PATH" 2>/dev/null
+    if [ -L "$SYMLINK_PATH" ] && [ "$(readlink "$SYMLINK_PATH")" = "$PERSIST_DIR/service.sh" ]; then
+        rm -f "$SYMLINK_PATH" || { print_fail "$(printf "$(t remove_failed_fmt)" "$SYMLINK_PATH")"; pause_prompt; return 1; }
         print_ok "$(printf "$(t path_removed_fmt)" "$SYMLINK_PATH")"
     fi
 
     if [ -d "$PERSIST_DIR" ]; then
-        rm -rf "$PERSIST_DIR" 2>/dev/null
+        rm -rf "$PERSIST_DIR" || { print_fail "$(printf "$(t remove_failed_fmt)" "$PERSIST_DIR")"; pause_prompt; return 1; }
         print_ok "$(printf "$(t path_removed_fmt)" "$PERSIST_DIR")"
     fi
 
     if [ -d "/tmp/zapret2-openwrt" ]; then
         print_info "$(t removing)"
-        rm -rf "/tmp/zapret2-openwrt"
+        rm -rf "/tmp/zapret2-openwrt" || { print_fail "$(printf "$(t remove_failed_fmt)" "/tmp/zapret2-openwrt")"; pause_prompt; return 1; }
         print_ok "$(t removed)"
     else
         print_info "$(t nothing_remove)"
@@ -684,50 +808,19 @@ action_uninstall() {
     exit 0
 }
 
-first_run_check()
-{
+first_run_check() {
     [ -z "$ZAPRET_BASE" ] && return 0
-
     get_active_strategy
     [ "$ACTIVE_STRATEGY" != "none" ] && return 0
-    [ -f "$ZAPRET_BASE/ipset/list-general.txt" ] && return 0
-
     clear
     printf "\n  ${C_BOLD}%s${C_RESET}\n\n" "$(t first_setup)"
     print_info "$(t no_strategy_yet)"
     printf "  %s" "$(t run_setup_q)"
-    read yn </dev/tty
-    case "$yn" in
-        n|N) return 0 ;;
-    esac
-
-    printf "\n"
-    print_info "$(t step1)"
-    copy_lists
-    copy_bins
-
-    printf "\n"
-    print_info "$(t step2)"
-    if [ -n "$CUSTOM_D" ] && [ -f "$SCRIPT_DIR/custom.d/$STRATEGY_FILE" ]; then
-        rm -f "$CUSTOM_D/$STRATEGY_FILE"
-        cp "$SCRIPT_DIR/custom.d/$STRATEGY_FILE" "$CUSTOM_D/"
-        print_ok "$(printf "$(t installed_to_fmt)" "$STRATEGY_FILE" "$CUSTOM_D/")"
-    else
-        print_fail "$(printf "$(t customd_missing_in_fmt)" "$ZAPRET_BASE")"
-        pause_prompt; return
+    read yn </dev/tty || return 0
+    case "$yn" in n|N) return 0 ;; esac
+    if select_strategy; then
+        deploy_strategy
     fi
-
-    printf "\n  %s" "$(t start_now_q)"
-    read yn2 </dev/tty
-    case "$yn2" in
-        n|N) ;;
-        *)
-            print_info "$(t starting)"
-            zapret_cmd start
-            print_ok "$(t done)"
-            ;;
-    esac
-
     pause_prompt
 }
 

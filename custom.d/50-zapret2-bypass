@@ -1,18 +1,18 @@
-# custom.d script: measured DPI bypass for Discord / YouTube / X / Proton / CDNs
-# Strategy: flat (first provider, measured 2026-08-22)
+# custom.d script: native flat / sky DPI bypass
+# Strategy: flat
 #
 # Engine: zapret2 (nfqws2). NOT compatible with zapret v1.
 #
 # USAGE: copy to $ZAPRET_BASE/init.d/openwrt/custom.d/
 #        (or init.d/sysv/custom.d/ on non-OpenWrt Linux)
-# LISTS: copy list-general.txt, list-hetzner.txt, list-exclude.txt
-#        to $ZAPRET_BASE/ipset/
+# LISTS: flat uses list-general.txt, list-hetzner.txt, list-exclude.txt in ipset/.
+#        sky uses native strategy.args and lists in strategies/sky/, plus ipset/list-exclude.txt.
 #
-# Both fake blobs used below ship with zapret2 - nothing extra to install.
-#
-# How this strategy was chosen: 1896 discovery tests plus ~1400 repeat-verified
-# tests with blockcheck2 (SCANLEVEL=force, REPEATS=5). It cleared 44 of 51
-# blocked hostnames on TLS 1.2, TLS 1.3 and QUIC alike.
+# Flat measurement notes (first provider, 2026-08-22):
+# Both flat fake blobs used below ship with zapret2.
+# Flat was chosen with 1896 discovery tests plus ~1400 repeat-verified tests
+# with blockcheck2 (SCANLEVEL=force, REPEATS=5). It cleared 44 of 51 blocked
+# hostnames on TLS 1.2, TLS 1.3 and QUIC alike.
 #
 #   ip_ttl=4  the fake must expire between the DPI and the server. This is the
 #             most path-specific value here - re-sweep it first if your ISP
@@ -39,14 +39,23 @@
 #             sni=www.google.com completed 35/36. Google and Proton were never
 #             affected - only the CDN targets.
 
+Z2B_STRATEGY=flat
+Z2B_PORTS_TCP=443,2053,2083,2087,2096,8443
+case "$Z2B_STRATEGY" in
+	flat) Z2B_PORTS_TCP="80,$Z2B_PORTS_TCP" ;;
+esac
+
 # override any of these in the zapret2 config file
-NFQWS2_Z2B_PORTS_TCP="${NFQWS2_Z2B_PORTS_TCP:-80,443,2053,2083,2087,2096,8443}"
+NFQWS2_Z2B_PORTS_TCP="${NFQWS2_Z2B_PORTS_TCP:-$Z2B_PORTS_TCP}"
 NFQWS2_Z2B_PORTS_UDP="${NFQWS2_Z2B_PORTS_UDP:-443,19294-19344,50000-65535}"
 NFQWS2_Z2B_TCP_PKT_OUT="${NFQWS2_Z2B_TCP_PKT_OUT:-20}"
 NFQWS2_Z2B_TCP_PKT_IN="${NFQWS2_Z2B_TCP_PKT_IN:-10}"
 NFQWS2_Z2B_UDP_PKT_OUT="${NFQWS2_Z2B_UDP_PKT_OUT:-8}"
 NFQWS2_Z2B_UDP_PKT_IN="${NFQWS2_Z2B_UDP_PKT_IN:-4}"
 
+Z2B_OPT=
+case "$Z2B_STRATEGY" in
+flat)
 Z2B_LISTS="$ZAPRET_BASE/ipset"
 Z2B_FAKE="$ZAPRET_BASE/files/fake"
 # Discord voice/STUN fake. Must be a REAL QUIC Initial, not zero bytes - see notes below.
@@ -79,21 +88,63 @@ NFQWS2_Z2B_OPT="${NFQWS2_Z2B_OPT:-
  --filter-udp=19294-19344,50000-65535 --filter-l7=discord,stun
    --payload=discord_ip_discovery,stun
    --lua-desync=fake:blob=voice_fake:repeats=6}"
+Z2B_OPT="$NFQWS2_Z2B_OPT"
+;;
+sky)
+[ ! -f "$ZAPRET_BASE/strategies/sky/strategy.args" ] ||
+	Z2B_OPT=$(cat "$ZAPRET_BASE/strategies/sky/strategy.args" 2>/dev/null) || Z2B_OPT=
+;;
+esac
 
 alloc_dnum DNUM_Z2B
 alloc_qnum QNUM_Z2B
+
+# Upstream custom_runner ignores a failed source/return. Abort startup explicitly,
+# but leave stop hooks usable even when an installed strategy asset is missing.
+z2b_check_strategy()
+{
+	local asset error=
+	case "$Z2B_STRATEGY" in
+		flat) return 0 ;;
+		sky)
+			for asset in strategy.args youtube.txt discord.txt proton.txt anime.txt; do
+				[ -f "$ZAPRET_BASE/strategies/sky/$asset" ] && [ -r "$ZAPRET_BASE/strategies/sky/$asset" ] ||
+					{ error="missing or unreadable sky asset: $ZAPRET_BASE/strategies/sky/$asset"; break; }
+			done
+			case "$Z2B_OPT" in
+				*[![:space:]]*) ;;
+				*) error="empty or unreadable sky strategy.args" ;;
+			esac
+			[ -f "$ZAPRET_BASE/ipset/list-exclude.txt" ] && [ -r "$ZAPRET_BASE/ipset/list-exclude.txt" ] ||
+				error="missing or unreadable exclusion list: $ZAPRET_BASE/ipset/list-exclude.txt"
+			;;
+		*) error="unsupported strategy: $Z2B_STRATEGY" ;;
+	esac
+	[ -z "$error" ] && return 0
+	echo "zapret2-bypass: $error" >&2
+	exit 1
+}
 
 zapret_custom_daemons()
 {
 	# $1 - 1 - run, 0 - stop
 
-	local opt="--qnum=$QNUM_Z2B $NFQWS2_Z2B_OPT"
+	[ "$1" = 0 ] || z2b_check_strategy
+	local opt="--qnum=$QNUM_Z2B $Z2B_OPT"
+	if [ "$1" != 0 ] && [ "$Z2B_STRATEGY" = sky ]; then
+		# Parse with the same upstream base options; Lua execution is checked at runtime.
+		"${NFQWS2:-$ZAPRET_BASE/nfq2/nfqws2}" --dry-run $NFQWS2_OPT_BASE $opt || {
+			echo "zapret2-bypass: invalid sky strategy or assets" >&2
+			exit 1
+		}
+	fi
 	do_nfqws $1 $DNUM_Z2B "$opt"
 }
 
 zapret_custom_firewall()
 {
 	# $1 - 1 - run, 0 - stop
+	[ "$1" = 0 ] || z2b_check_strategy
 
 	local f4 f6
 	local ports_tcp=$(replace_char - : $NFQWS2_Z2B_PORTS_TCP)
@@ -103,11 +154,13 @@ zapret_custom_firewall()
 		[ -n "$NFQWS2_Z2B_TCP_PKT_OUT" -a "$NFQWS2_Z2B_TCP_PKT_OUT" != 0 ] && {
 			f4="-p tcp -m multiport --dports $ports_tcp $(ipt_first_packets $NFQWS2_Z2B_TCP_PKT_OUT)"
 			f6="$f4"
+			[ "$Z2B_STRATEGY" = sky ] && f6=
 			fw_nfqws_post $1 "$f4" "$f6" $QNUM_Z2B
 		}
 		[ -n "$NFQWS2_Z2B_TCP_PKT_IN" -a "$NFQWS2_Z2B_TCP_PKT_IN" != 0 ] && {
 			f4="-p tcp -m multiport --sports $ports_tcp $(ipt_first_packets $NFQWS2_Z2B_TCP_PKT_IN)"
 			f6="$f4"
+			[ "$Z2B_STRATEGY" = sky ] && f6=
 			fw_nfqws_pre $1 "$f4" "$f6" $QNUM_Z2B
 		}
 	}
@@ -115,11 +168,13 @@ zapret_custom_firewall()
 		[ -n "$NFQWS2_Z2B_UDP_PKT_OUT" -a "$NFQWS2_Z2B_UDP_PKT_OUT" != 0 ] && {
 			f4="-p udp -m multiport --dports $ports_udp $(ipt_first_packets $NFQWS2_Z2B_UDP_PKT_OUT)"
 			f6="$f4"
+			[ "$Z2B_STRATEGY" = sky ] && f6=
 			fw_nfqws_post $1 "$f4" "$f6" $QNUM_Z2B
 		}
 		[ -n "$NFQWS2_Z2B_UDP_PKT_IN" -a "$NFQWS2_Z2B_UDP_PKT_IN" != 0 ] && {
 			f4="-p udp -m multiport --sports $ports_udp $(ipt_first_packets $NFQWS2_Z2B_UDP_PKT_IN)"
 			f6="$f4"
+			[ "$Z2B_STRATEGY" = sky ] && f6=
 			fw_nfqws_pre $1 "$f4" "$f6" $QNUM_Z2B
 		}
 	}
@@ -131,26 +186,31 @@ zapret_custom_firewall_nft()
 	# NOTE: zapret2's nft_fw_nfqws_* take (filter4, filter6, qnum) - no on/off
 	#       argument, unlike the zapret v1 helpers.
 
-	local f
+	z2b_check_strategy
+	local f f6
 
 	[ -n "$NFQWS2_Z2B_PORTS_TCP" ] && {
 		[ -n "$NFQWS2_Z2B_TCP_PKT_OUT" -a "$NFQWS2_Z2B_TCP_PKT_OUT" != 0 ] && {
 			f="tcp dport {$NFQWS2_Z2B_PORTS_TCP} $(nft_first_packets $NFQWS2_Z2B_TCP_PKT_OUT)"
-			nft_fw_nfqws_post "$f" "$f" $QNUM_Z2B
+			f6="$f"; [ "$Z2B_STRATEGY" = sky ] && f6=
+			nft_fw_nfqws_post "$f" "$f6" $QNUM_Z2B
 		}
 		[ -n "$NFQWS2_Z2B_TCP_PKT_IN" -a "$NFQWS2_Z2B_TCP_PKT_IN" != 0 ] && {
 			f="tcp sport {$NFQWS2_Z2B_PORTS_TCP} $(nft_first_packets $NFQWS2_Z2B_TCP_PKT_IN)"
-			nft_fw_nfqws_pre "$f" "$f" $QNUM_Z2B
+			f6="$f"; [ "$Z2B_STRATEGY" = sky ] && f6=
+			nft_fw_nfqws_pre "$f" "$f6" $QNUM_Z2B
 		}
 	}
 	[ -n "$NFQWS2_Z2B_PORTS_UDP" ] && {
 		[ -n "$NFQWS2_Z2B_UDP_PKT_OUT" -a "$NFQWS2_Z2B_UDP_PKT_OUT" != 0 ] && {
 			f="udp dport {$NFQWS2_Z2B_PORTS_UDP} $(nft_first_packets $NFQWS2_Z2B_UDP_PKT_OUT)"
-			nft_fw_nfqws_post "$f" "$f" $QNUM_Z2B
+			f6="$f"; [ "$Z2B_STRATEGY" = sky ] && f6=
+			nft_fw_nfqws_post "$f" "$f6" $QNUM_Z2B
 		}
 		[ -n "$NFQWS2_Z2B_UDP_PKT_IN" -a "$NFQWS2_Z2B_UDP_PKT_IN" != 0 ] && {
 			f="udp sport {$NFQWS2_Z2B_PORTS_UDP} $(nft_first_packets $NFQWS2_Z2B_UDP_PKT_IN)"
-			nft_fw_nfqws_pre "$f" "$f" $QNUM_Z2B
+			f6="$f"; [ "$Z2B_STRATEGY" = sky ] && f6=
+			nft_fw_nfqws_pre "$f" "$f6" $QNUM_Z2B
 		}
 	}
 }

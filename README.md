@@ -7,25 +7,65 @@ Cloudflare CDNs and Twitch emote services.
 This is the zapret2 successor to
 [zapret-openwrt](https://github.com/rikkichy/zapret-openwrt). That repo shipped
 19 alternative strategies for zapret v1 and asked you to guess which one your
-ISP needed. Here, **flat** remains the installation default. The second provider's
-**sky** candidate is a separate [Docker-only experiment](#sky--docker-only-candidate).
+ISP needed. Here, **flat** is the default for a new install, and the manager can
+select **flat** or the second provider's [**sky** strategy](#sky--second-provider-strategy).
 
 > **zapret2 only.** `nfqws2` is a different engine from v1 `nfqws` — the
 > `--dpi-desync=*` options no longer exist; strategies are Lua calls. This repo
 > will not work against a zapret v1 install.
 
-## sky — Docker-only candidate
+## sky — second-provider strategy
 
-**Docker only.** Nothing in the existing installer or service manager selects
-`sky`; the `flat` installation and runtime behavior are unchanged.
+Select **sky** in the native OpenWrt manager with option **1**, then **2**.
+The first-run setup also asks which strategy to install. Local validation remains
+Docker-only; native installation on your router is supported separately.
 
 The candidate, narrow YouTube/Discord/Proton/Anime365 hostlists, runner, and
 acceptance probe live in [`strategies/sky/`](strategies/sky/). Its Dockerfile builds the measured
 upstream revision inside the image and includes the existing Steam fake blob.
 It does not require a sibling source checkout or a bare-metal zapret2 install.
-The current image targets **Linux ARM64**, matching the measured rig.
+The Docker test image targets **Linux ARM64**, matching the measured rig.
+Native OpenWrt uses the router's existing `nfqws2` binary, not that Docker image.
 
-### Running sky
+### Native selection and switching
+
+The selected name is stored in the single installed `custom.d/50-zapret2-bypass`
+entrypoint and survives reopening the manager and rebooting the router.
+An existing legacy strategy is recognized as **flat**; updating the manager does
+not silently switch it to sky. Enter keeps the current selection, and 0 cancels.
+
+The manager prepares required files before stopping the old service, then installs
+the new selection. Declining startup leaves the service stopped. Copy/start
+failures restore prior runtime files when possible; unresolved recovery retains a
+backup and prints its location.
+
+Sky's native profiles and editable lists are installed under
+`$ZAPRET_BASE/strategies/sky/`. Reinstalling preserves existing lists and the shared
+`ipset/list-exclude.txt`; native profiles are regenerated from the canonical
+[`strategy.args`](strategies/sky/strategy.args), using upstream queue allocation
+and Lua initialization. Only one custom.d entrypoint is installed.
+
+Existing port/packet overrides apply to both strategies. `NFQWS2_Z2B_OPT` and
+`NFQWS2_Z2B_VOICE_FAKE` remain **flat-only**, so old flat options cannot silently
+replace a sky selection. Sky is IPv4-only and depends on negotiated TCP timestamps.
+Native startup validates its arguments with `nfqws2 --dry-run`; Lua execution and
+real client behavior still need runtime verification.
+
+The opt-in [`manager smoke test`](tools/test-strategy-manager.py) drives the real
+menu through a PTY, using BusyBox tools and upstream native SysV/nftables helpers
+inside Docker. It covers switching, cancellation, user-list preservation,
+reopening the registered command, invalid-profile rollback, and uninstall.
+This is not a test of a physical router's procd boot.
+
+After building the test image below, run it in the dedicated Lima VM:
+
+```sh
+limactl shell zapret sudo docker run --rm --init --name zapret-manager-test \
+  --privileged --network host -v "$PWD:/repo:ro" --entrypoint bash zapret2-sky \
+  -c 'apt-get update && apt-get install -y --no-install-recommends busybox && python3 /repo/tools/test-strategy-manager.py'
+```
+
+### Docker validation
 
 Use a dedicated Linux Docker host with a packet-preserving network path.
 On macOS, use Docker **inside the existing Lima `zapret` VM with vzNAT** and
@@ -60,7 +100,8 @@ limactl shell zapret sudo docker run --rm --network host \
 
 Docker host networking means **the Linux VM**, not macOS. These commands do not
 route the Mac's browser or Discord application through the candidate.
-The runner rejects execution outside Docker. Do not install `sky` bare-metal.
+The test runner rejects execution outside Docker. Use the manager, not this
+runner or the Docker argument file directly, for native OpenWrt installation.
 
 ### Evidence and limits
 
@@ -109,11 +150,12 @@ failures and browser observations.
 The probe checks the relevant transports per endpoint: normal HTTPS plus
 advertised HTTP/3 for Anime365, TLS 1.2/1.3 for the tested Proton frontends.
 It does not mislabel untested Proton HTTP/3 as blocking or claim the
-unreachable mail frontends pass. The hostlists do not route ordinary Mac apps.
+unreachable mail frontends pass. The Docker rig does not route ordinary Mac apps;
+native OpenWrt interception follows the router's existing LAN/WAN configuration.
 
 
 ## Install
-These instructions install **flat**, not the Docker-only `sky` candidate.
+The installer offers **flat** and **sky**; **flat** is the fresh-install default.
 
 
 On the router, over SSH:
@@ -130,12 +172,18 @@ wget -O- https://raw.githubusercontent.com/rikkichy/zapret2-openwrt/main/install
 
 That fetches the repo and opens the interactive manager, which will offer to
 install the zapret2 base (`v1.0.4`, openwrt-embedded) if it isn't there yet,
-copy the lists, install the strategy and start the service. Afterwards, type
-`zapret2` to reopen the menu.
+ask for **flat** or **sky**, copy the corresponding assets, and offer to start the
+service. Afterwards, type `zapret2` to reopen the menu.
 
 Manual install: copy this folder to the router and run `./service.sh`.
 
+To update an older manager that has no selector, rerun the installer above.
+Then use option **1** to choose a strategy. An existing installation remains
+selected until you explicitly change it.
+
 ## The strategy
+The following measurements and parameters describe **flat**.
+
 
 ```
 --payload=tls_client_hello
@@ -291,12 +339,9 @@ stays direct.
 
 ## Menu
 
-```
-STRATEGY   1. Install / reinstall strategy      2. Show installed
-SERVICE    3. Start   4. Stop   5. Restart   6. Status
-LISTS      7. Edit domain lists
-TOOLS      8. Diagnostics   9. Uninstall
-```
+Run `zapret2`; option **1** selects and installs **flat** or **sky**.
+The current installed name appears beside that option. List editing and
+diagnostics follow the selected strategy's deployed assets.
 
 ## License
 
