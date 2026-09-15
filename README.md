@@ -19,8 +19,8 @@ ISP needed. Here, **flat** remains the installation default. The second provider
 **Docker only.** Nothing in the existing installer or service manager selects
 `sky`; the `flat` installation and runtime behavior are unchanged.
 
-The candidate, narrow YouTube/Discord hostlists, runner, and acceptance probe live
-in [`strategies/sky/`](strategies/sky/). Its Dockerfile builds the measured
+The candidate, narrow YouTube/Discord/Proton/Anime365 hostlists, runner, and
+acceptance probe live in [`strategies/sky/`](strategies/sky/). Its Dockerfile builds the measured
 upstream revision inside the image and includes the existing Steam fake blob.
 It does not require a sibling source checkout or a bare-metal zapret2 install.
 The current image targets **Linux ARM64**, matching the measured rig.
@@ -83,6 +83,34 @@ every subsequent Docker rebuild or provider route has identical behavior.
 - IPv4 only. `discordstatus.com` remains outside the core candidate with its
   body stall unresolved. Timestamp-less clients and real client routing need
   verification before promotion.
+
+### Proton and Anime365 extension
+
+[`services-results.json`](strategies/sky/services-results.json) records this
+extension separately from the original YouTube/Discord results, with raw
+failures and browser observations.
+
+- **Anime365:** `anime-365.ru` and `smotret-anime.online` now use the existing TCP
+  strategy and no-TTL QUIC fake. Both completed five normal-HTTPS and five
+  HTTP/3-only login-page requests. An isolated browser routed through a
+  temporary Docker HTTP proxy rendered the login page and loaded its scripts.
+  The TCP peer rejects forced TLS 1.3; verified normal HTTPS negotiates TLS 1.2.
+  Those forced-version failures are preserved, not presented as fixed.
+- **Proton web:** the website, account sign-in, Drive, Calendar, Pass, and VPN
+  website completed all 60 TLS 1.2/1.3 body checks. The account application
+  rendered its sign-in form. No authenticated actions or VPN tunnel were tested.
+- **Proton Mail is not fixed:** `mail.proton.me`, `mail.protonmail.com`, and
+  `protonmail.com` failed all three direct TCP/443 attempts per address.
+  `api.protonmail.ch` had one reachable and one unreachable address. Reachable
+  API hosts returned structured unauthenticated HTTP 401 responses; this proves
+  API transport, not mailbox access. TLS desync cannot repair a TCP connection
+  that never establishes.
+
+The probe checks the relevant transports per endpoint: normal HTTPS plus
+advertised HTTP/3 for Anime365, TLS 1.2/1.3 for the tested Proton frontends.
+It does not mislabel untested Proton HTTP/3 as blocking or claim the
+unreachable mail frontends pass. The hostlists do not route ordinary Mac apps.
+
 
 ## Install
 These instructions install **flat**, not the Docker-only `sky` candidate.

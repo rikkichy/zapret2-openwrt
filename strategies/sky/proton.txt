@@ -1,0 +1,5 @@
+# Proton web and API hosts. Hostlists cannot fix TCP-unreachable mail IPs.
+proton.me
+protonmail.com
+protonmail.ch
+protonvpn.com

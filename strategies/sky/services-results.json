@@ -1,0 +1,170 @@
+{
+  "strategy": "sky",
+  "measurement_date": "2026-09-15",
+  "scope": "Docker-only extension for Proton web/API and Anime365; flat unchanged; no persistent Mac app routing",
+  "decision": "Reuse existing TCP timestamp fake + multidisorder by extending hostlists. Anime365 shares the existing no-TTL QUIC fake profile. No new desync algorithm, DNS override, or TLS setting change.",
+  "packaged_image_smoke": {
+    "image": "4092ea6cb621",
+    "passed": 28,
+    "total": 28,
+    "repeats": 1,
+    "evidence": "evidence/services-image-smoke.jsonl"
+  },
+  "proton": {
+    "frontends": {
+      "https://proton.me/": {
+        "tls12": {
+          "passed": 5,
+          "total": 5,
+          "body_bytes_min": 457032,
+          "body_bytes_max": 457032
+        },
+        "tls13": {
+          "passed": 5,
+          "total": 5,
+          "body_bytes_min": 457032,
+          "body_bytes_max": 457032
+        }
+      },
+      "https://account.proton.me/login": {
+        "tls12": {
+          "passed": 5,
+          "total": 5,
+          "body_bytes_min": 7816,
+          "body_bytes_max": 7816
+        },
+        "tls13": {
+          "passed": 5,
+          "total": 5,
+          "body_bytes_min": 7816,
+          "body_bytes_max": 7816
+        }
+      },
+      "https://drive.proton.me/": {
+        "tls12": {
+          "passed": 5,
+          "total": 5,
+          "body_bytes_min": 7388,
+          "body_bytes_max": 7388
+        },
+        "tls13": {
+          "passed": 5,
+          "total": 5,
+          "body_bytes_min": 7388,
+          "body_bytes_max": 7388
+        }
+      },
+      "https://calendar.proton.me/": {
+        "tls12": {
+          "passed": 5,
+          "total": 5,
+          "body_bytes_min": 4819,
+          "body_bytes_max": 4819
+        },
+        "tls13": {
+          "passed": 5,
+          "total": 5,
+          "body_bytes_min": 4819,
+          "body_bytes_max": 4819
+        }
+      },
+      "https://pass.proton.me/": {
+        "tls12": {
+          "passed": 5,
+          "total": 5,
+          "body_bytes_min": 4861,
+          "body_bytes_max": 4861
+        },
+        "tls13": {
+          "passed": 5,
+          "total": 5,
+          "body_bytes_min": 4861,
+          "body_bytes_max": 4861
+        }
+      },
+      "https://protonvpn.com/": {
+        "tls12": {
+          "passed": 5,
+          "total": 5,
+          "body_bytes_min": 418408,
+          "body_bytes_max": 418410
+        },
+        "tls13": {
+          "passed": 5,
+          "total": 5,
+          "body_bytes_min": 418409,
+          "body_bytes_max": 418410
+        }
+      }
+    },
+    "api": "mail-api.proton.me, reachable api.protonmail.ch address, and account API returned structured HTTP 401 without credentials after sending the observed public app-version header. Reachability only, not authenticated mail access.",
+    "observed_app_version": "web-account@5.0.416.0",
+    "browser": "Account sign-in application reached readyState=complete with email/password form visible; no login attempted.",
+    "tcp_unreachable": {
+      "mail.proton.me": "185.70.42.37",
+      "mail.protonmail.com": "185.70.42.42",
+      "protonmail.com": "185.70.42.12",
+      "api.protonmail.ch (one address)": "3.66.189.153"
+    },
+    "tcp_boundary": "Each listed address failed 3/3 direct TCP/443 connects. api.protonmail.ch at 3.77.252.102 passed 3/3. A TLS desync profile cannot fix a connection that never establishes TCP.",
+    "limits": [
+      "Mail frontend still unreachable; do not claim Proton Mail works.",
+      "Drive/Calendar had earlier intermittent TCP failures despite later 3/3 TCP and 10/10 TLS body success.",
+      "No authenticated sign-in, mailbox, upload, password-vault, calendar operation, or VPN tunnel was tested.",
+      "Proton did not advertise HTTP/3 in the sampled responses; no Proton QUIC profile added."
+    ]
+  },
+  "anime365": {
+    "hosts": [
+      "anime-365.ru",
+      "smotret-anime.online"
+    ],
+    "normal_https": {
+      "passed": 10,
+      "total": 10,
+      "per_host": "5/5 completed login bodies; ~169 KB each"
+    },
+    "http3_only": {
+      "passed": 10,
+      "total": 10,
+      "per_host": "5/5 completed login bodies; no TCP fallback"
+    },
+    "forced_tcp_tls13": {
+      "passed": 0,
+      "total": 10,
+      "error": "TLS alert protocol version; retained, not fixed or hidden"
+    },
+    "tls_diagnostic": "OpenSSL with certificate/hostname verification passes TLS1.2 and receives alert 70 when forced to TLS1.3. Proxied Chrome negotiates TLS1.2 and completes the page. The source of the forced-version rejection is not independently established.",
+    "browser": {
+      "url": "https://anime-365.ru/users/login",
+      "status": 200,
+      "title": "\u0412\u0445\u043e\u0434 - Anime 365",
+      "tls_protocol": "TLS 1.2",
+      "ready_state": "complete",
+      "completed_resources": 48,
+      "jquery_ready": true
+    },
+    "limits": [
+      "Login page, redirect, scripts and styles verified; no authenticated video playback tested.",
+      "Native Mac apps remain outside this Docker path; only the isolated test browser used the temporary Docker HTTP CONNECT proxy."
+    ]
+  },
+  "probe_contract": "Existing YouTube/Discord tests unchanged in scope. Proton tests TLS1.2/TLS1.3; Anime365 tests normal HTTPS negotiation and advertised HTTP/3. Historical forced-version failures remain in evidence.",
+  "sources": [
+    "https://raw.githubusercontent.com/ProtonMail/WebClients/main/packages/shared/lib/api/domains.ts"
+  ],
+  "evidence": {
+    "services-baseline.jsonl": "evidence/services-baseline.jsonl",
+    "services-candidate.jsonl": "evidence/services-candidate.jsonl",
+    "services-repeated.jsonl": "evidence/services-repeated.jsonl",
+    "anime-quic-discovery.jsonl": "evidence/anime-quic-discovery.jsonl",
+    "anime-https-repeated.jsonl": "evidence/anime-https-repeated.jsonl",
+    "anime-tls-versions.jsonl": "evidence/anime-tls-versions.jsonl",
+    "anime-browser.json": "evidence/anime-browser.json",
+    "anime-browser-tls.json": "evidence/anime-browser-tls.json",
+    "proton-browser.json": "evidence/proton-browser.json",
+    "proton-tcp.jsonl": "evidence/proton-tcp.jsonl",
+    "proton-api.jsonl": "evidence/proton-api.jsonl",
+    "proton-api-verified.jsonl": "evidence/proton-api-verified.jsonl"
+  }
+}

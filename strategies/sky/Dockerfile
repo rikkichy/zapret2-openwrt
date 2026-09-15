@@ -24,7 +24,7 @@ ADD https://codeload.github.com/bol-van/zapret2/tar.gz/a0be7cbb40a4230e4b60fc33b
 RUN tar -xzf /tmp/zapret2.tar.gz --strip-components=1 -C /opt/zapret2 && rm /tmp/zapret2.tar.gz
 RUN make -C /opt/zapret2 || make -C /opt/zapret2 systemd
 COPY files/fake/quic_initial_steamcommunity_com.bin /opt/zapret2/files/fake/
-COPY strategies/sky/strategy.args strategies/sky/run.sh strategies/sky/probe.py strategies/sky/youtube.txt strategies/sky/discord.txt /sky/
+COPY strategies/sky/strategy.args strategies/sky/run.sh strategies/sky/probe.py strategies/sky/youtube.txt strategies/sky/discord.txt strategies/sky/proton.txt strategies/sky/anime.txt /sky/
 WORKDIR /sky
 ENTRYPOINT ["bash", "/sky/run.sh"]
 CMD ["python3", "/sky/probe.py"]

@@ -15,15 +15,27 @@ import tempfile
 if not Path('/.dockerenv').exists():
     sys.exit('Docker ONLY')
 
+# Minimum completed body bytes and the transports each endpoint is tested on.
+# Proton did not advertise h3. Anime365's TCP peer rejects forced TLS 1.3;
+# test normal HTTPS negotiation there, while retaining the rejection evidence.
 URLS = {
-    'https://www.youtube.com/': 100000,
-    'https://i.ytimg.com/vi/jNQXAC9IVRw/hqdefault.jpg': 10000,
-    'https://discord.com/': 10000,
-    'https://discord.com/api/v10/gateway': 1,
+    'https://www.youtube.com/': (100000, ('tls12', 'tls13', 'h3')),
+    'https://i.ytimg.com/vi/jNQXAC9IVRw/hqdefault.jpg': (10000, ('tls12', 'tls13', 'h3')),
+    'https://discord.com/': (10000, ('tls12', 'tls13', 'h3')),
+    'https://discord.com/api/v10/gateway': (1, ('tls12', 'tls13', 'h3')),
+    'https://anime-365.ru/users/login': (100000, ('https', 'h3')),
+    'https://smotret-anime.online/users/login': (100000, ('https', 'h3')),
+    'https://proton.me/': (100000, ('tls12', 'tls13')),
+    'https://account.proton.me/login': (5000, ('tls12', 'tls13')),
+    'https://drive.proton.me/': (5000, ('tls12', 'tls13')),
+    'https://calendar.proton.me/': (4000, ('tls12', 'tls13')),
+    'https://pass.proton.me/': (4000, ('tls12', 'tls13')),
+    'https://protonvpn.com/': (100000, ('tls12', 'tls13')),
 }
 PROTOCOLS = {
     'tls12': ['--http2', '--tlsv1.2', '--tls-max', '1.2'],
     'tls13': ['--http2', '--tlsv1.3'],
+    'https': ['--http2', '--tlsv1.2'],
     'h3': ['--http3-only'],
 }
 
@@ -39,7 +51,7 @@ def probe(item):
         metrics = json.loads(result.stdout or '{}')
         status = metrics.get('http_code', 0)
         size = metrics.get('size_download', 0)
-        ok = result.returncode == 0 and status == 200 and size >= URLS[url]
+        ok = result.returncode == 0 and status == 200 and size >= URLS[url][0]
         if protocol == 'h3':
             ok = ok and metrics.get('http_version') == '3'
         if ok and url.endswith('/gateway'):
@@ -62,8 +74,8 @@ if __name__ == '__main__':
         for row in pool.map(probe, (
             (attempt, protocol, url)
             for attempt in range(1, repeats + 1)
-            for protocol in PROTOCOLS
-            for url in URLS
+            for url, (_, protocols) in URLS.items()
+            for protocol in protocols
         )):
             print(json.dumps(row), flush=True)
             passed = passed and row['ok']

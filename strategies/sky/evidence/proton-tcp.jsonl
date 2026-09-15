@@ -1,0 +1,24 @@
+{"host": "mail.proton.me", "ip": "185.70.42.37", "attempt": 1, "tcp443": false, "seconds": 3.005, "error": "timed out"}
+{"host": "mail.proton.me", "ip": "185.70.42.37", "attempt": 2, "tcp443": false, "seconds": 3.006, "error": "timed out"}
+{"host": "mail.proton.me", "ip": "185.70.42.37", "attempt": 3, "tcp443": false, "seconds": 3.006, "error": "timed out"}
+{"host": "mail.protonmail.com", "ip": "185.70.42.42", "attempt": 1, "tcp443": false, "seconds": 3.005, "error": "timed out"}
+{"host": "mail.protonmail.com", "ip": "185.70.42.42", "attempt": 2, "tcp443": false, "seconds": 3.005, "error": "timed out"}
+{"host": "mail.protonmail.com", "ip": "185.70.42.42", "attempt": 3, "tcp443": false, "seconds": 3.006, "error": "timed out"}
+{"host": "protonmail.com", "ip": "185.70.42.12", "attempt": 1, "tcp443": false, "seconds": 3.007, "error": "timed out"}
+{"host": "protonmail.com", "ip": "185.70.42.12", "attempt": 2, "tcp443": false, "seconds": 3.008, "error": "timed out"}
+{"host": "protonmail.com", "ip": "185.70.42.12", "attempt": 3, "tcp443": false, "seconds": 3.008, "error": "timed out"}
+{"host": "api.protonmail.ch", "ip": "3.66.189.153", "attempt": 1, "tcp443": false, "seconds": 3.004, "error": "timed out"}
+{"host": "api.protonmail.ch", "ip": "3.66.189.153", "attempt": 2, "tcp443": false, "seconds": 3.005, "error": "timed out"}
+{"host": "api.protonmail.ch", "ip": "3.66.189.153", "attempt": 3, "tcp443": false, "seconds": 3.007, "error": "timed out"}
+{"host": "api.protonmail.ch", "ip": "3.77.252.102", "attempt": 1, "tcp443": true, "seconds": 0.052, "error": ""}
+{"host": "api.protonmail.ch", "ip": "3.77.252.102", "attempt": 2, "tcp443": true, "seconds": 0.049, "error": ""}
+{"host": "api.protonmail.ch", "ip": "3.77.252.102", "attempt": 3, "tcp443": true, "seconds": 0.052, "error": ""}
+{"host": "drive.proton.me", "ip": "35.158.238.7", "attempt": 1, "tcp443": true, "seconds": 0.049, "error": ""}
+{"host": "drive.proton.me", "ip": "35.158.238.7", "attempt": 2, "tcp443": true, "seconds": 0.052, "error": ""}
+{"host": "drive.proton.me", "ip": "35.158.238.7", "attempt": 3, "tcp443": true, "seconds": 0.052, "error": ""}
+{"host": "calendar.proton.me", "ip": "35.158.238.7", "attempt": 1, "tcp443": true, "seconds": 0.052, "error": ""}
+{"host": "calendar.proton.me", "ip": "35.158.238.7", "attempt": 2, "tcp443": true, "seconds": 0.051, "error": ""}
+{"host": "calendar.proton.me", "ip": "35.158.238.7", "attempt": 3, "tcp443": true, "seconds": 0.051, "error": ""}
+{"host": "account.proton.me", "ip": "185.70.42.36", "attempt": 1, "tcp443": true, "seconds": 0.05, "error": ""}
+{"host": "account.proton.me", "ip": "185.70.42.36", "attempt": 2, "tcp443": true, "seconds": 0.062, "error": ""}
+{"host": "account.proton.me", "ip": "185.70.42.36", "attempt": 3, "tcp443": true, "seconds": 0.06, "error": ""}

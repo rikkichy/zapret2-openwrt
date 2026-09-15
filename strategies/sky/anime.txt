@@ -1,0 +1,3 @@
+# Anime365 and its tested mirror; includes subdomains.
+anime-365.ru
+smotret-anime.online

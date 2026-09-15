@@ -1,0 +1,4 @@
+{"url": "https://mail-api.proton.me/core/v4/domains/available", "exit": 0, "status": 401, "bytes": 56, "ip": "185.70.42.41", "body": {"Code": 401, "Error": "Invalid access token", "Details": {}}, "error": ""}
+{"url": "https://api.protonmail.ch/core/v4/domains/available", "exit": 0, "status": 401, "bytes": 56, "ip": "3.77.252.102", "body": {"Code": 401, "Error": "Invalid access token", "Details": {}}, "error": ""}
+{"url": "https://account.proton.me/api/core/v4/domains/available", "exit": 0, "status": 401, "bytes": 56, "ip": "185.70.42.36", "body": {"Code": 401, "Error": "Invalid access token", "Details": {}}, "error": ""}
+{"url": "https://calendar.proton.me/", "exit": 0, "status": 200, "bytes": 4819, "ip": "35.158.238.7", "body": null, "error": ""}

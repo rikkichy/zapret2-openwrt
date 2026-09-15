@@ -1,0 +1,2 @@
+{"tls_option": "-tls1_2", "exit": 0, "output": "CONNECTION ESTABLISHED\nProtocol version: TLSv1.2\nCiphersuite: ECDHE-ECDSA-CHACHA20-POLY1305\nPeer certificate: CN = anime-365.ru\nHash used: SHA256\nSignature type: ECDSA\nVerification: OK\nVerified peername: anime-365.ru\nSupported Elliptic Curve Point Formats: uncompressed\nServer Temp Key: X25519, 253 bits\nDONE\n"}
+{"tls_option": "-tls1_3", "exit": 1, "output": "20509A4F41EA0000:error:0A00042E:SSL routines:ssl3_read_bytes:tlsv1 alert protocol version:../ssl/record/rec_layer_s3.c:1601:SSL alert number 70\n"}

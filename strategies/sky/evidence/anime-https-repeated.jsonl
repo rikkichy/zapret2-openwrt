@@ -1,0 +1,10 @@
+{"attempt": 1, "protocol": "https", "url": "https://anime-365.ru/users/login", "ok": true, "exit": 0, "status": 200, "bytes": 168994, "ip": "172.67.191.12", "http_version": "2", "seconds": 0.307275, "error": ""}
+{"attempt": 1, "protocol": "https", "url": "https://smotret-anime.online/users/login", "ok": true, "exit": 0, "status": 200, "bytes": 169002, "ip": "172.67.214.245", "http_version": "2", "seconds": 0.201157, "error": ""}
+{"attempt": 2, "protocol": "https", "url": "https://anime-365.ru/users/login", "ok": true, "exit": 0, "status": 200, "bytes": 168994, "ip": "172.67.191.12", "http_version": "2", "seconds": 0.305159, "error": ""}
+{"attempt": 2, "protocol": "https", "url": "https://smotret-anime.online/users/login", "ok": true, "exit": 0, "status": 200, "bytes": 169002, "ip": "104.21.83.61", "http_version": "2", "seconds": 0.413588, "error": ""}
+{"attempt": 3, "protocol": "https", "url": "https://anime-365.ru/users/login", "ok": true, "exit": 0, "status": 200, "bytes": 168994, "ip": "172.67.191.12", "http_version": "2", "seconds": 0.199262, "error": ""}
+{"attempt": 3, "protocol": "https", "url": "https://smotret-anime.online/users/login", "ok": true, "exit": 0, "status": 200, "bytes": 169002, "ip": "104.21.83.61", "http_version": "2", "seconds": 0.45758, "error": ""}
+{"attempt": 4, "protocol": "https", "url": "https://anime-365.ru/users/login", "ok": true, "exit": 0, "status": 200, "bytes": 168994, "ip": "172.67.191.12", "http_version": "2", "seconds": 0.203361, "error": ""}
+{"attempt": 4, "protocol": "https", "url": "https://smotret-anime.online/users/login", "ok": true, "exit": 0, "status": 200, "bytes": 169002, "ip": "104.21.83.61", "http_version": "2", "seconds": 0.466447, "error": ""}
+{"attempt": 5, "protocol": "https", "url": "https://anime-365.ru/users/login", "ok": true, "exit": 0, "status": 200, "bytes": 168994, "ip": "172.67.191.12", "http_version": "2", "seconds": 0.212091, "error": ""}
+{"attempt": 5, "protocol": "https", "url": "https://smotret-anime.online/users/login", "ok": true, "exit": 0, "status": 200, "bytes": 169002, "ip": "172.67.214.245", "http_version": "2", "seconds": 0.309112, "error": ""}
