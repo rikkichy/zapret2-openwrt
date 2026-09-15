@@ -336,6 +336,19 @@ stage_asset() {
     assets="$assets $rel"
 }
 
+# Match nfqws2's Lua loader: prefer the requested file, then its gzip variant.
+resolve_asset_file() {
+    case "$1" in
+        lua/*.lua)
+            if [ ! -r "$ZAPRET_BASE/$1" ] && [ -r "$ZAPRET_BASE/$1.gz" ]; then
+                printf '%s.gz\n' "$1"
+                return
+            fi
+            ;;
+    esac
+    printf '%s\n' "$1"
+}
+
 prepare_strategy() {
     local f rel base_escaped
     mkdir -p "$stage/new" "$stage/old" || return 1
@@ -350,7 +363,8 @@ prepare_strategy() {
     stage_asset ipset/list-exclude.txt "$SCRIPT_DIR/lists/list-exclude.txt" || return 1
     stage_asset files/fake/quic_initial_steamcommunity_com.bin \
         "$SCRIPT_DIR/files/fake/quic_initial_steamcommunity_com.bin" || return 1
-    for f in lua/zapret-lib.lua lua/zapret-antidpi.lua files/fake/quic_initial_www_google_com.bin; do
+    for f in lua/zapret-lib.lua lua/zapret-antidpi.lua lua/zapret-auto.lua files/fake/quic_initial_www_google_com.bin; do
+        f=$(resolve_asset_file "$f")
         [ -s "$ZAPRET_BASE/$f" ] && [ -r "$ZAPRET_BASE/$f" ] ||
             { print_fail "$(printf "$(t file_not_found_fmt)" "$ZAPRET_BASE/$f")"; return 1; }
     done
@@ -675,8 +689,9 @@ action_diagnostics() {
     else
         files="$files ipset/zapret-hosts-user-ipban.txt files/fake/tls_clienthello_iana_org_bigsize.bin"
     fi
-    files="$files files/fake/quic_initial_www_google_com.bin files/fake/quic_initial_steamcommunity_com.bin lua/zapret-lib.lua lua/zapret-antidpi.lua"
+    files="$files files/fake/quic_initial_www_google_com.bin files/fake/quic_initial_steamcommunity_com.bin lua/zapret-lib.lua lua/zapret-antidpi.lua lua/zapret-auto.lua"
     for f in $files; do
+        f=$(resolve_asset_file "$f")
         if [ -r "$ZAPRET_BASE/$f" ]; then
             count=$(wc -l < "$ZAPRET_BASE/$f")
             print_ok "$(printf "$(t file_entries_fmt)" "$f" "$count")"

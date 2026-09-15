@@ -5,6 +5,7 @@ Requires the sky image, BusyBox, a read-only /repo mount, --privileged, and the
 validated Lima host network. Never run in a container with an active zapret2.
 Uses real PTYs, files, nfqws2 and nftables; no mocked service/installer callbacks.
 """
+import gzip
 import hashlib
 import os
 from pathlib import Path
@@ -113,6 +114,11 @@ def close_manager():
 
 try:
     shutil.copytree('/opt/zapret2', base)
+    # The installed openwrt-embedded release has *.lua.gz, not plain *.lua.
+    # Keep the source-image test faithful to that layout; nfqws2 loads gzip itself.
+    for lua_file in (base / 'lua').glob('*.lua'):
+        lua_file.with_suffix('.lua.gz').write_bytes(gzip.compress(lua_file.read_bytes()))
+        lua_file.unlink()
     shutil.rmtree(base / 'init.d/openwrt', ignore_errors=True)
     (base / 'config').write_text((base / 'config.default').read_text() + '\nFWTYPE=nftables\nIFACE_WAN=lima0\nDISABLE_IPV6=0\nWS_USER=nobody\n')
     custom = base / 'init.d/sysv/custom.d'

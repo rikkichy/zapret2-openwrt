@@ -51,10 +51,15 @@ replace a sky selection. Sky is IPv4-only and depends on negotiated TCP timestam
 Native startup validates its arguments with `nfqws2 --dry-run`; Lua execution and
 real client behavior still need runtime verification.
 
+OpenWrt's embedded release stores Lua libraries as `*.lua.gz`. The manager
+accepts either plain or gzip-compressed libraries, matching `nfqws2`'s own loader.
+Leave packaged Lua files compressed; no manual rename or symlink is required.
+
 The opt-in [`manager smoke test`](tools/test-strategy-manager.py) drives the real
 menu through a PTY, using BusyBox tools and upstream native SysV/nftables helpers
-inside Docker. It covers switching, cancellation, user-list preservation,
-reopening the registered command, invalid-profile rollback, and uninstall.
+inside Docker with compressed Lua assets matching the embedded release. It covers
+switching, cancellation, user-list preservation, reopening the registered command,
+invalid-profile rollback, and uninstall.
 This is not a test of a physical router's procd boot.
 
 After building the test image below, run it in the dedicated Lima VM:
