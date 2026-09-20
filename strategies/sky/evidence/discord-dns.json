@@ -1,0 +1,22 @@
+{
+  "measurement_date": "2026-09-20",
+  "scope": "Docker in the dedicated Lima vzNAT VM. Real native SysV/nftables strategy installation and real dnsmasq processes. No changes to the Mac or physical router DNS, and no physical procd boot test.",
+  "regression": "The test upstream supplies only 162.159.136.232 for discord.com and updates.discord.com. Installing/starting sky changes exactly these two answers to the four reachable addresses. Direct native stop restores the bad upstream answer; start reapplies the override. An unrelated user record and an unlisted Discord subdomain are unchanged.",
+  "lifecycle": "Passed manager installation, cancellation, list-preserving reinstall, flat/sky switching, command persistence, invalid-profile rollback, and uninstall. Existing user up/down firewall hooks still execute. Uninstall removes the managed DNS file and helper, and the base service remains stoppable.",
+  "live_checks_with_dns_fix_and_tcp_timestamps_disabled": {
+    "current_manifest": "HTTP success, 9069 bytes, structurally valid current update manifest",
+    "current_module": "discord_utils 0.0.412 full.distro, 480670 bytes; SHA-256 matches the current manifest",
+    "gateway_api": "35-byte JSON response with expected gateway URL",
+    "discord_homepage": "Completed HTML, 170241 bytes",
+    "cdn_avatar": "Completed PNG, 1268 bytes",
+    "gateway_websocket": "Verified HTTP upgrade and complete op=10 Hello",
+    "unrelated_control": "Completed example.com HTML, 559 bytes"
+  },
+  "other_native_service_checks": "YouTube, Discord API and Anime365 completed through the installed native callbacks.",
+  "known_limits": [
+    "Static measured address set; future routing changes may require updating it.",
+    "Requires clients to use the router's dnsmasq and its default /tmp/hosts integration; external DNS/DoH bypasses these records.",
+    "Uses normal native firewall lifecycle hooks (INIT_APPLY_FW=1). Custom resolver users must configure the records themselves and opt out with NFQWS2_Z2B_DISCORD_DNS=0.",
+    "No authenticated Discord session, live voice or screenshare validation."
+  ]
+}

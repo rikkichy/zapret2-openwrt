@@ -349,6 +349,10 @@ resolve_asset_file() {
     printf '%s\n' "$1"
 }
 
+strip_discord_dns_config() {
+    sed '/^# BEGIN zapret2-openwrt Discord DNS$/,/^# END zapret2-openwrt Discord DNS$/d' "$1"
+}
+
 prepare_strategy() {
     local f rel base_escaped
     mkdir -p "$stage/new" "$stage/old" || return 1
@@ -388,6 +392,11 @@ prepare_strategy() {
         [ ! -e "$ZAPRET_BASE/$rel" ] ||
             cp -p "$ZAPRET_BASE/$rel" "$stage/old/$rel" || return 1
         assets="$assets $rel"
+        rel=strategies/sky/discord-dns.sh
+        cp "$SCRIPT_DIR/$rel" "$stage/new/$rel" || return 1
+        [ ! -e "$ZAPRET_BASE/$rel" ] ||
+            cp -p "$ZAPRET_BASE/$rel" "$stage/old/$rel" || return 1
+        assets="$assets $rel"
     else
         for f in list-general.txt list-hetzner.txt zapret-hosts-user-ipban.txt; do
             stage_asset "ipset/$f" "$SCRIPT_DIR/lists/$f" || return 1
@@ -395,6 +404,20 @@ prepare_strategy() {
         [ -s "$ZAPRET_BASE/files/fake/tls_clienthello_iana_org_bigsize.bin" ] ||
             { print_fail "$(printf "$(t file_not_found_fmt)" "$ZAPRET_BASE/files/fake/tls_clienthello_iana_org_bigsize.bin")"; return 1; }
     fi
+    # The native firewall hooks cover boot, restart and procd stop as well as
+    # manager actions. Stage config with the strategy so rollback restores both.
+    cp -p "$ZAPRET_BASE/config" "$stage/old/config" &&
+        cp -p "$ZAPRET_BASE/config" "$stage/new/config" &&
+        strip_discord_dns_config "$stage/old/config" > "$stage/new/config" || return 1
+    if [ "$SELECTED_STRATEGY" = sky ]; then
+        cat >> "$stage/new/config" <<'DNS_CONFIG'
+
+# BEGIN zapret2-openwrt Discord DNS
+. "$ZAPRET_BASE/strategies/sky/discord-dns.sh"
+# END zapret2-openwrt Discord DNS
+DNS_CONFIG
+    fi
+    assets="$assets config"
 }
 
 restore_strategy() {
@@ -794,8 +817,19 @@ action_uninstall() {
         fi
         print_ok "$(t strategy_removed)"
     fi
-    if [ -n "$ZAPRET_BASE" ] && ! rm -f "$ZAPRET_BASE/strategies/sky/strategy.args"; then
-        print_fail "$(printf "$(t remove_failed_fmt)" "$ZAPRET_BASE/strategies/sky/strategy.args")"
+    if [ -n "$ZAPRET_BASE" ] && grep -q '^# BEGIN zapret2-openwrt Discord DNS$' "$ZAPRET_BASE/config"; then
+        local config_tmp
+        config_tmp=$(mktemp "$ZAPRET_BASE/.z2b-config.XXXXXX") || return 1
+        if ! cp -p "$ZAPRET_BASE/config" "$config_tmp" ||
+            ! strip_discord_dns_config "$ZAPRET_BASE/config" > "$config_tmp" ||
+            ! mv -f "$config_tmp" "$ZAPRET_BASE/config"; then
+            rm -f "$config_tmp"
+            print_fail "$(printf "$(t remove_failed_fmt)" "$ZAPRET_BASE/config")"
+            pause_prompt; return 1
+        fi
+    fi
+    if [ -n "$ZAPRET_BASE" ] && ! rm -f "$ZAPRET_BASE/strategies/sky/strategy.args" "$ZAPRET_BASE/strategies/sky/discord-dns.sh"; then
+        print_fail "$(printf "$(t remove_failed_fmt)" "$ZAPRET_BASE/strategies/sky")"
         pause_prompt; return 1
     fi
 

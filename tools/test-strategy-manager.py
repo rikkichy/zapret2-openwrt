@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Exercise the real manager and upstream native service in a disposable Docker VM.
 
-Requires the sky image, BusyBox, a read-only /repo mount, --privileged, and the
+Requires the sky image, BusyBox, dnsmasq-base, a read-only /repo mount, --privileged, and the
 validated Lima host network. Never run in a container with an active zapret2.
 Uses real PTYs, files, nfqws2 and nftables; no mocked service/installer callbacks.
 """
@@ -27,6 +27,8 @@ if any(p.exists() or p.is_symlink() for p in (SOURCE, PERSIST, COMMAND)):
     raise SystemExit('Use a disposable container without an installed manager')
 if not shutil.which('busybox'):
     raise SystemExit('Install BusyBox inside the disposable test container first')
+if not shutil.which('dnsmasq'):
+    raise SystemExit('Install dnsmasq-base inside the disposable test container first')
 if subprocess.run(['nft', 'list', 'table', 'inet', 'zapret2'], capture_output=True).returncode == 0:
     raise SystemExit('An existing zapret2 firewall is present; refusing to touch it')
 
@@ -43,6 +45,28 @@ ui_fd = None
 pending = b''
 transcript = bytearray()
 old_sysctl = run('sysctl', '-n', 'net.netfilter.nf_conntrack_tcp_be_liberal').strip()
+dns_processes = []
+dns_config = Path('/var/etc/dnsmasq.conf.z2b-test')
+dns_hosts = Path('/tmp/hosts/zapret2-sky-discord')
+user_hosts = Path('/tmp/hosts/z2b-test-preserved')
+resolv = Path('/etc/resolv.conf')
+old_resolv = resolv.read_text()
+if any(p.exists() for p in (dns_config, dns_hosts, user_hosts)):
+    raise SystemExit('Use a disposable container without existing DNS test files')
+
+
+def check_dns(enabled):
+    expected = {'162.159.138.232', '162.159.137.232', '162.159.128.233', '162.159.135.232'} if enabled else {'162.159.136.232'}
+    for host in ('discord.com', 'updates.discord.com'):
+        deadline = time.monotonic() + 3
+        while True:
+            answers = set(run('dig', '@127.0.0.1', '+short', '+time=1', '+tries=1', host, 'A').split())
+            if answers == expected or time.monotonic() >= deadline:
+                break
+            time.sleep(.05)
+        assert answers == expected, (host, answers, expected)
+    assert run('dig', '@127.0.0.1', '+short', 'untouched.example', 'A').strip() == '192.0.2.55'
+    assert run('dig', '@127.0.0.1', '+short', 'unlisted.discord.com', 'A').strip() == '162.159.136.232'
 
 
 def open_manager(path):
@@ -121,6 +145,9 @@ try:
         lua_file.unlink()
     shutil.rmtree(base / 'init.d/openwrt', ignore_errors=True)
     (base / 'config').write_text((base / 'config.default').read_text() + '\nFWTYPE=nftables\nIFACE_WAN=lima0\nDISABLE_IPV6=0\nWS_USER=nobody\n')
+    user_hooks = root / 'user-hook-events'
+    with (base / 'config').open('a') as config:
+        config.write(f"user_up() {{ echo up >> '{user_hooks}'; }}\nuser_down() {{ echo down >> '{user_hooks}'; }}\nINIT_FW_POST_UP_HOOK=user_up\nINIT_FW_POST_DOWN_HOOK=user_down\n")
     custom = base / 'init.d/sysv/custom.d'
     custom.mkdir(exist_ok=True)
     entrypoint = custom / '50-zapret2-bypass'
@@ -131,6 +158,20 @@ try:
     (root / 'bin').mkdir()
     run('busybox', '--install', '-s', str(root / 'bin'))
     run('sysctl', '-w', 'net.netfilter.nf_conntrack_tcp_be_liberal=1')
+    # Two real dnsmasq processes: a deterministic bad upstream answer, and the
+    # OpenWrt addn-hosts layout. All DNS changes are confined to this container.
+    dns_config.parent.mkdir(parents=True, exist_ok=True)
+    user_hosts.parent.mkdir(parents=True, exist_ok=True)
+    user_hosts.write_text('192.0.2.55 untouched.example\n')
+    upstream = root / 'upstream.conf'
+    upstream.write_text('port=1053\nlisten-address=127.0.0.1\nbind-interfaces\nno-resolv\nno-hosts\nserver=127.0.0.53\naddress=/discord.com/162.159.136.232\n')
+    dns_config.write_text('port=53\nlisten-address=127.0.0.1\nbind-interfaces\nno-resolv\nno-hosts\nserver=127.0.0.1#1053\naddn-hosts=/tmp/hosts\n')
+    for config in (upstream, dns_config):
+        dns_processes.append(subprocess.Popen(['dnsmasq', '--keep-in-foreground', '--conf-file=' + str(config), '--pid-file=', '--log-facility=-'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL))
+    time.sleep(.3)
+    assert all(p.poll() is None for p in dns_processes), 'DNS test ports are unavailable'
+    resolv.write_text('nameserver 127.0.0.1\n')
+    check_dns(False)
 
     open_manager(SOURCE / 'service.sh')
     expect('Run guided setup?')
@@ -143,6 +184,18 @@ try:
     assert active() == 'sky'
     one_daemon()
     print('PASS: first setup selects sky and starts one native daemon', flush=True)
+    check_dns(True)
+    assert user_hooks.read_text().splitlines()[-1] == 'up'
+    run(str(base / 'init.d/sysv/zapret2'), 'stop')
+    check_dns(False)
+    assert user_hooks.read_text().splitlines()[-1] == 'down'
+    # SysV leaves stderr inherited by the background daemon; do not capture it.
+    subprocess.run([str(base / 'init.d/sysv/zapret2'), 'start'], check=True,
+                   stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=20)
+    check_dns(True)
+    assert user_hooks.read_text().splitlines()[-1] == 'up'
+    print(run('python3', str(REPO / 'tools/test-sky-discord.py')), flush=True)
+    print('PASS: native start/stop installs/removes exact Discord DNS overrides; unrelated names preserved', flush=True)
 
     before = hashlib.sha256(entrypoint.read_bytes()).digest()
     send('1\n')
@@ -177,10 +230,12 @@ try:
     install('1')
     assert active() == 'flat'
     one_daemon()
+    check_dns(False)
     install('2')
     assert active() == 'sky' and youtube.read_text() == edited and other.exists()
     one_daemon()
     print('PASS: sky -> flat -> sky preserves user lists and unrelated callbacks', flush=True)
+    check_dns(True)
 
     # Exercise actual traffic through the installed native callback, not run.sh.
     for url in ('https://www.youtube.com/', 'https://discord.com/api/v10/gateway', 'https://anime-365.ru/users/login'):
@@ -208,6 +263,9 @@ try:
     one_daemon()
     args_file.write_text(canonical)
     print('PASS: invalid sky arguments roll back to the previous running strategy', flush=True)
+    check_dns(False)
+    install('2')
+    check_dns(True)
 
     send('9\n')
     expect('Proceed?')
@@ -218,6 +276,9 @@ try:
     assert not entrypoint.exists() and other.exists() and youtube.read_text() == edited
     assert not (base / 'strategies/sky/strategy.args').exists()
     assert subprocess.run(['pidof', 'nfqws2'], capture_output=True).returncode != 0
+    check_dns(False)
+    assert not dns_hosts.exists()
+    assert not (base / 'strategies/sky/discord-dns.sh').exists()
     print('PASS: uninstall removes managed runtime and leaves user data intact', flush=True)
 finally:
     if ui_pid is not None:
@@ -226,6 +287,13 @@ finally:
         os.close(ui_fd)
     if (base / 'init.d/sysv/zapret2').exists():
         subprocess.run([str(base / 'init.d/sysv/zapret2'), 'stop'], capture_output=True)
+    resolv.write_text(old_resolv)
+    for process in dns_processes:
+        if process.poll() is None:
+            process.terminate()
+        process.wait(timeout=5)
+    dns_config.unlink(missing_ok=True)
+    user_hosts.unlink(missing_ok=True)
     run('sysctl', '-w', 'net.netfilter.nf_conntrack_tcp_be_liberal=' + old_sysctl)
     print(transcript.decode(errors='replace'))
     if COMMAND.is_symlink() and os.readlink(COMMAND) == str(PERSIST / 'service.sh'):

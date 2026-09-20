@@ -50,9 +50,29 @@ and Lua initialization. Only one custom.d entrypoint is installed.
 YouTube/Anime365 keep their separate QUIC profile; no desync parameters changed.
 
 **Existing sky installations:** update the manager, then select option **1 → 2**
-to reinstall sky and start it. This adds the new shared list and updates native
-profile references without overwriting your existing edited service lists.
+to reinstall sky and start it. This installs the Discord DNS fix and updates native
+profiles without overwriting your existing edited service lists.
 Updating the manager alone does not change the running strategy.
+
+Sky also installs a reversible **Discord DNS override** for exactly `discord.com`
+and `updates.discord.com`. It uses the four reachable addresses in
+[`discord-dns.sh`](strategies/sky/discord-dns.sh), matching Flowseal's hosts
+workaround and avoiding the observed nonresponding address. These are measured
+static addresses, not a guarantee against future routing changes.
+
+The override uses OpenWrt dnsmasq's default `/tmp/hosts` directory and a SIGHUP,
+not a DNS/DHCP restart. Native firewall start/stop hooks add/remove the managed
+file, including on boot and restart; switching to flat or uninstalling removes
+the integration. Existing user firewall hooks and unrelated DNS records remain.
+This relies on normal `INIT_APPLY_FW=1` service operation.
+
+**After reinstalling, fully quit and reopen Discord** to discard its cached bad
+connection/address. Clients must use the router's DNS. With a different resolver
+or `ignore_hosts_dir`, configure these two records in that resolver and set
+`NFQWS2_Z2B_DISCORD_DNS=0` in zapret2's config. Sky otherwise refuses startup if
+dnsmasq is not configured to read the hosts directory.
+The [DNS fix verification](strategies/sky/evidence/discord-dns.json) records the
+tested lifecycle and current updater results, including the remaining limits.
 
 Existing port/packet overrides apply to both strategies. `NFQWS2_Z2B_OPT` and
 `NFQWS2_Z2B_VOICE_FAKE` remain **flat-only**, so old flat options cannot silently
@@ -68,7 +88,7 @@ The opt-in [`manager smoke test`](tools/test-strategy-manager.py) drives the rea
 menu through a PTY, using BusyBox tools and upstream native SysV/nftables helpers
 inside Docker with compressed Lua assets matching the embedded release. It covers
 switching, cancellation, user-list preservation, reopening the registered command,
-invalid-profile rollback, and uninstall.
+invalid-profile rollback, uninstall, real dnsmasq start/stop resolution, and the live updater manifest/module download.
 This is not a test of a physical router's procd boot.
 
 After building the test image below, run it in the dedicated Lima VM:
@@ -76,7 +96,7 @@ After building the test image below, run it in the dedicated Lima VM:
 ```sh
 limactl shell zapret sudo docker run --rm --init --name zapret-manager-test \
   --privileged --network host -v "$PWD:/repo:ro" --entrypoint bash zapret2-sky \
-  -c 'apt-get update && apt-get install -y --no-install-recommends busybox && python3 /repo/tools/test-strategy-manager.py'
+  -c 'apt-get update && apt-get install -y --no-install-recommends busybox dnsmasq-base && python3 /repo/tools/test-strategy-manager.py'
 ```
 
 ### Docker validation
@@ -143,14 +163,11 @@ every subsequent Docker rebuild or provider route has identical behavior.
   [Discord fix evidence](strategies/sky/evidence/discord-tcp-ack.json) also records
   the updater checksum, media TLS checks, UDP observations, and rejected candidates.
 
-Discord regression (dedicated Docker VM only; temporarily disables TCP timestamps
-and restores them on exit):
-
-```sh
-limactl shell zapret sudo docker run --rm --init --name zapret-discord-test \
-  --privileged --network host -v "$PWD/tools:/checks:ro" \
-  zapret2-sky python3 /checks/test-sky-discord.py
-```
+The manager smoke test above also runs the [Discord regression](tools/test-sky-discord.py)
+with TCP timestamps disabled and restores them afterwards. It fetches the current
+update manifest and verifies a module against its advertised SHA-256, then checks
+HTTPS, CDN and Gateway WebSocket transport. The standalone Docker runner does not
+install the native dnsmasq hooks; use the manager test to exercise the DNS fix.
 
 The ACK modifier is zapret2's documented [TCP field operation](https://github.com/bol-van/zapret2/blob/master/docs/manual.en.md#standard-fooling),
 not a copied v1 `--dpi-desync` option. [ALT4](https://github.com/Flowseal/zapret-discord-youtube/blob/main/general%20%28ALT4%29.bat)'s broad IP/game catch-all rules are not imported.

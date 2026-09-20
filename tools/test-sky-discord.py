@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Run under /sky/run.sh in Docker; verify Discord with TCP timestamps disabled.
+"""Run with sky active in Docker; verify Discord with TCP timestamps disabled.
 
 Uses public endpoints only. No login, live voice, or screenshare claim.
 The dedicated VM's timestamp setting is restored even when a probe fails.
@@ -13,6 +13,7 @@ import ssl
 import struct
 import subprocess
 import tempfile
+from urllib.parse import urlsplit
 
 if not Path('/.dockerenv').exists():
     raise SystemExit('Docker ONLY')
@@ -61,7 +62,7 @@ def gateway():
                 print(json.dumps({'check': 'gateway-websocket-hello', 'ok': True}), flush=True)
 
 
-def https(url, kind):
+def https(url, kind, expected_sha256=None):
     with tempfile.NamedTemporaryFile() as body:
         result = subprocess.run(['curl-http3', '-4', '--noproxy', '*', '-fsS',
                                  '--connect-timeout', '8', '--max-time', '25',
@@ -72,14 +73,28 @@ def https(url, kind):
             assert json.loads(data)['url'] == 'wss://gateway.discord.gg'
         elif kind == 'png':
             assert data.startswith(b'\x89PNG\r\n\x1a\n')
+        elif kind == 'manifest':
+            manifest = json.loads(data)
+            assert manifest['full']['host_version'] and manifest['required_modules']
+        elif kind == 'module':
+            assert hashlib.sha256(data).hexdigest() == expected_sha256
         else:
             assert b'</html>' in data.lower(), url
         print(json.dumps({'check': kind, 'url': url, 'bytes': len(data), 'ok': True}), flush=True)
+        return data
 
 
 old = subprocess.check_output(['sysctl', '-n', 'net.ipv4.tcp_timestamps'], text=True).strip()
 try:
     subprocess.run(['sysctl', '-w', 'net.ipv4.tcp_timestamps=0'], check=True)
+    manifest = json.loads(https(
+        'https://updates.discord.com/distributions/app/manifests/latest'
+        '?channel=stable&platform=osx&arch=arm64&platform_version=26.6.2'
+        '&client_version=90413&install_id=00000000-0000-4000-8000-000000000001', 'manifest'))
+    module = manifest['modules']['discord_utils']['full']
+    parsed = urlsplit(module['url'])
+    assert parsed.scheme == 'https' and parsed.hostname.endswith('.discordapp.net')
+    https(module['url'], 'module', module['package_sha256'])
     https('https://discord.com/api/v10/gateway', 'gateway')
     https('https://discord.com/', 'html')
     https('https://cdn.discordapp.com/embed/avatars/0.png', 'png')
