@@ -1,0 +1,49 @@
+{
+  "measurement_date": "2026-09-20",
+  "scope": "Docker inside the dedicated Lima zapret vzNAT VM; IPv4. No zapret execution on macOS, directly in the VM, or on the OpenWrt router. No authenticated Discord session.",
+  "image": "669f665f3f6e",
+  "native_manager_integration": "Passed inside Docker: sky installation/start, cancellation, list-preserving reinstall, flat/sky switching, native YouTube/Discord/Anime365 body completion, persistent command registration, invalid-profile rollback, and uninstall.",
+  "change": "Move Discord's existing hostlist into a first-match TLS profile with tcp_ack=1000 instead of tcp_ts=-1000. Preserve Google-SNI fake, six repeats, multidisorder split points, media TCP ports, all other service profiles, and UDP handling.",
+  "reproduction": {
+    "condition": "Original sky with net.ipv4.tcp_timestamps=0 in the Docker test namespace",
+    "discord_homepage": "TLS handshake failure, curl exit 35",
+    "discord_gateway_api": "TLS handshake failure, curl exit 35",
+    "discord_cdn_avatar": "TLS handshake failure, curl exit 35",
+    "discord_updater_host": "TLS handshake failure, curl exit 35",
+    "unrelated_control": "https://example.com/ completed HTTP 200, 559 bytes"
+  },
+  "candidate_selection": {
+    "tcp_ack_1_and_1000": "Both completed Discord homepage, gateway JSON, CDN avatar and unrelated control with TCP timestamps enabled and disabled. Selected 1000.",
+    "rejected": [
+      "ALT4-like tcp_seq=1000:tcp_ack=-66000:tcp_ts_up plus multisplit timed out on this Docker path; not deployed.",
+      "Negative TCP sequence offsets and negative ACK offsets timed out; not deployed.",
+      "TTL 2, ACK +1000000, unset ACK and set SYN allowed small replies but stalled the Discord homepage at 9565 bytes; not accepted as working.",
+      "TTL 3/4 and TCP MD5 timed out; badsum caused TLS failure; positive sequence alone caused resets. Not deployed."
+    ],
+    "limit": "These observations do not identify which hop filters or normalizes packets, and are not universal judgments about those techniques."
+  },
+  "fixed_timestamp_less_checks": {
+    "regression_command": "Run tools/test-sky-discord.py under /sky/run.sh in Docker as documented in README.md",
+    "gateway_api": "HTTP 200, 35 bytes, expected wss://gateway.discord.gg URL",
+    "homepage": "Completed HTML, 170253 bytes",
+    "cdn_avatar": "Completed PNG, 1268 bytes",
+    "gateway_websocket": "Verified upgrade acceptance hash, complete text Hello with op=10 and positive heartbeat_interval",
+    "unrelated_control": "Completed example.com HTML, 559 bytes",
+    "updater_module": {
+      "url": "https://stable.dl2.discordapp.net/distro/app/stable/osx/universal/0.0.411/discord_utils/1/full.distro",
+      "bytes": 504553,
+      "sha256": "6120e8fcbea9e2f7b11121d8783267de30dc4288a0281abece2f837665f362dd",
+      "expected_hash_source": "Existing discord-updater-verified.jsonl; complete body matches the previously recorded manifest hash, not an updater application execution"
+    },
+    "media_tls": "discord.media ports 443,2053,2083,2087,2096,8443 all completed TLS 1.3 with certificate verification",
+    "media_http_limit": "The apex is not a live voice endpoint: HTTP on 443 returned 520; the five alternate ports timed out waiting for an HTTP response. Separate TLS-only checks passed; do not report the HTTP origin as working.",
+    "udp_loopback": "Discovery and STUN each delivered six exact Steam fake blobs plus one unchanged original; unrelated UDP delivered only its original. A following audio-like RTP payload on each flow was unchanged and generated no extra fake.",
+    "voice_fake_sha256": "2fe18b3bd20807d36704d0b072092ee49ae84edca907a4420ab9a0f0f28fddcf"
+  },
+  "limits": [
+    "No live voice, foreign-region channel, screenshare, authenticated startup, or router forwarding validation.",
+    "Other sky TLS service profiles still require negotiated TCP timestamps; their strategies were not changed.",
+    "No blanket IP/game catch-all rules, IPv6 changes, DNS changes, or new dependencies.",
+    "A successful local test cannot guarantee every ISP, TCP implementation, or future Discord endpoint."
+  ]
+}

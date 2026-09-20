@@ -56,7 +56,7 @@ Updating the manager alone does not change the running strategy.
 
 Existing port/packet overrides apply to both strategies. `NFQWS2_Z2B_OPT` and
 `NFQWS2_Z2B_VOICE_FAKE` remain **flat-only**, so old flat options cannot silently
-replace a sky selection. Sky is IPv4-only and depends on negotiated TCP timestamps.
+replace a sky selection. Sky is IPv4-only. Non-Discord TLS profiles still depend on negotiated TCP timestamps.
 Native startup validates its arguments with `nfqws2 --dry-run`; Lua execution and
 real client behavior still need runtime verification.
 
@@ -124,10 +124,11 @@ including failures, source revision, and original runtime versions. The
 59/60 body result belongs to the original test image, not an assertion that
 every subsequent Docker rebuild or provider route has identical behavior.
 
-- Unlike `flat`, `sky` uses **TCP timestamp fooling**, not a TTL-4 TLS fake.
-  It requires a negotiated TCP Timestamp option; without one, the fake can
-  corrupt the connection. See the exact profiles in
-  [`strategy.args`](strategies/sky/strategy.args).
+- Discord TLS has its own first-match, hostlisted profile using `tcp_ack=1000`
+  on Google-SNI fakes. This replaces timestamp-only fooling for the client,
+  updater, gateway, CDN, and `discord.media` HTTPS ports. Other service profiles
+  remain unchanged; their `tcp_ts` fake still requires negotiated TCP timestamps.
+  See [`strategy.args`](strategies/sky/strategy.args).
 - YouTube and Discord have separate QUIC profiles. HTTP/3 checks prohibit
   fallback to TCP, so a successful HTTPS request is not misreported as QUIC.
 - One TLS 1.2 thumbnail request failed in the five-repeat run. Do not erase
@@ -136,8 +137,25 @@ every subsequent Docker rebuild or provider route has identical behavior.
   WebSocket Hello passed. Voice discovery/STUN were verified only with a
   loopback packet receiver; **live voice and screenshare remain unverified**.
 - IPv4 only. `discordstatus.com` remains outside the core candidate with its
-  body stall unresolved. Timestamp-less clients and real client routing need
-  verification before promotion.
+  body stall unresolved. The Discord timestamp-less regression checks completed
+  HTTPS bodies, a CDN image, and a real unauthenticated Gateway WebSocket Hello.
+  It does not establish authenticated client, live voice, or screenshare support.
+  [Discord fix evidence](strategies/sky/evidence/discord-tcp-ack.json) also records
+  the updater checksum, media TLS checks, UDP observations, and rejected candidates.
+
+Discord regression (dedicated Docker VM only; temporarily disables TCP timestamps
+and restores them on exit):
+
+```sh
+limactl shell zapret sudo docker run --rm --init --name zapret-discord-test \
+  --privileged --network host -v "$PWD/tools:/checks:ro" \
+  zapret2-sky python3 /checks/test-sky-discord.py
+```
+
+The ACK modifier is zapret2's documented [TCP field operation](https://github.com/bol-van/zapret2/blob/master/docs/manual.en.md#standard-fooling),
+not a copied v1 `--dpi-desync` option. [ALT4](https://github.com/Flowseal/zapret-discord-youtube/blob/main/general%20%28ALT4%29.bat)'s broad IP/game catch-all rules are not imported.
+Reinstall **sky** with manager option **1 → 2** after updating these files;
+updating the manager alone does not replace the running strategy.
 
 ### Proton and Anime365 extension
 
