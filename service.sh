@@ -201,26 +201,29 @@ install_zapret_base() {
         return 1
     fi
 
-    local extracted_dir
-    extracted_dir=$(find "$tmpdir" -maxdepth 1 -type d ! -path "$tmpdir" | head -1)
+    local extracted_dir="" dir
+    for dir in "$tmpdir"/*; do
+        [ -f "$dir/install_prereq.sh" ] && [ -f "$dir/install_bin.sh" ] || continue
+        extracted_dir="$dir"
+        break
+    done
     if [ -z "$extracted_dir" ] || [ ! -d "$extracted_dir" ]; then
         print_fail "$(t extracted_dir_missing)"
         rm -rf "$tmpdir"
         return 1
     fi
 
-    local installer="$extracted_dir/install_easy.sh"
+    local installer="$SCRIPT_DIR/tools/install-base.sh"
     if [ ! -f "$installer" ]; then
         print_fail "$(t installer_missing)"
         rm -rf "$tmpdir"
         return 1
     fi
-    [ -x "$installer" ] || chmod +x "$installer"
 
     printf "\n"
     print_info "$(t running_installer)"
     printf "\n"
-    if ! "$installer" </dev/tty; then
+    if ! sh "$installer" "$extracted_dir" </dev/tty; then
         print_fail "$(t installer_failed)"
         rm -rf "$tmpdir"
         return 1
@@ -233,17 +236,24 @@ install_zapret_base() {
     detect_custom_d
     detect_init_system
 
-    if [ -n "$INIT_TYPE" ]; then
-        print_info "$(t stopping_pre_setup)"
-        zapret_cmd stop || { print_fail "$(t stop_failed)"; return 1; }
-    fi
-
     return 0
 }
 
 zapret_cmd() {
     case "$INIT_TYPE" in
-        initd|sysv) "$INIT_SCRIPT" "$1" ;;
+        initd|sysv)
+            "$INIT_SCRIPT" "$1" || return $?
+            # fw3's init script deliberately leaves rules to its firewall
+            # include. Apply our own rules only after the user's service action,
+            # not by restarting the system firewall during base installation.
+            if [ "$INIT_TYPE" = initd ] && [ -x /sbin/fw3 ] &&
+                ( . "$ZAPRET_BASE/config"; [ "$FWTYPE" = iptables ] ); then
+                case "$1" in
+                    start|stop|restart) "$INIT_SCRIPT" "${1}_fw" || return $? ;;
+                esac
+            fi
+            return 0
+            ;;
         systemd)    systemctl "$1" zapret2 ;;
         *)
             print_fail "$(t init_script_missing)"
@@ -349,8 +359,9 @@ resolve_asset_file() {
     printf '%s\n' "$1"
 }
 
-strip_discord_dns_config() {
-    sed '/^# BEGIN zapret2-openwrt Discord DNS$/,/^# END zapret2-openwrt Discord DNS$/d' "$1"
+strip_managed_config() {
+    sed -e '/^# BEGIN zapret2-openwrt Discord DNS$/,/^# END zapret2-openwrt Discord DNS$/d' \
+        -e '/^# BEGIN zapret2-openwrt strategy$/,/^# END zapret2-openwrt strategy$/d' "$1"
 }
 
 prepare_strategy() {
@@ -408,15 +419,14 @@ prepare_strategy() {
     # manager actions. Stage config with the strategy so rollback restores both.
     cp -p "$ZAPRET_BASE/config" "$stage/old/config" &&
         cp -p "$ZAPRET_BASE/config" "$stage/new/config" &&
-        strip_discord_dns_config "$stage/old/config" > "$stage/new/config" || return 1
+        strip_managed_config "$stage/old/config" > "$stage/new/config" || return 1
+    # Only the selected custom strategy may own this traffic. Keep the user's
+    # upstream setting above intact so uninstall/rollback restores it.
+    printf '\n%s\n' '# BEGIN zapret2-openwrt strategy' 'NFQWS2_ENABLE=0' >> "$stage/new/config" || return 1
     if [ "$SELECTED_STRATEGY" = sky ]; then
-        cat >> "$stage/new/config" <<'DNS_CONFIG'
-
-# BEGIN zapret2-openwrt Discord DNS
-. "$ZAPRET_BASE/strategies/sky/discord-dns.sh"
-# END zapret2-openwrt Discord DNS
-DNS_CONFIG
+        printf '%s\n' '. "$ZAPRET_BASE/strategies/sky/discord-dns.sh"' >> "$stage/new/config" || return 1
     fi
+    printf '%s\n' '# END zapret2-openwrt strategy' >> "$stage/new/config" || return 1
     assets="$assets config"
 }
 
@@ -443,6 +453,11 @@ deploy_strategy() {
         { print_fail "$(t install_prerequisites)"; return 1; }
     # nfqws options are whitespace-delimited by upstream do_nfqws.
     case "$ZAPRET_BASE" in *[[:space:]]*) print_fail "$(t base_path_invalid)"; return 1 ;; esac
+    if [ -f /etc/openwrt_release ] && command -v uci >/dev/null 2>&1 &&
+        [ "$(uci -q get firewall.@defaults[0].flow_offloading)" = 1 ]; then
+        print_fail "$(t offload_conflict)"
+        return 1
+    fi
     stage=$(mktemp -d "$ZAPRET_BASE/.z2b-install.XXXXXX") || return 1
     if ! prepare_strategy; then
         print_fail "$(t prepare_failed)"
@@ -817,11 +832,11 @@ action_uninstall() {
         fi
         print_ok "$(t strategy_removed)"
     fi
-    if [ -n "$ZAPRET_BASE" ] && grep -q '^# BEGIN zapret2-openwrt Discord DNS$' "$ZAPRET_BASE/config"; then
+    if [ -n "$ZAPRET_BASE" ] && grep -Eq '^# BEGIN zapret2-openwrt (Discord DNS|strategy)$' "$ZAPRET_BASE/config"; then
         local config_tmp
         config_tmp=$(mktemp "$ZAPRET_BASE/.z2b-config.XXXXXX") || return 1
         if ! cp -p "$ZAPRET_BASE/config" "$config_tmp" ||
-            ! strip_discord_dns_config "$ZAPRET_BASE/config" > "$config_tmp" ||
+            ! strip_managed_config "$ZAPRET_BASE/config" > "$config_tmp" ||
             ! mv -f "$config_tmp" "$ZAPRET_BASE/config"; then
             rm -f "$config_tmp"
             print_fail "$(printf "$(t remove_failed_fmt)" "$ZAPRET_BASE/config")"

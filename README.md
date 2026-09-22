@@ -45,6 +45,14 @@ Sky's native profiles and editable lists are installed under
 [`strategy.args`](strategies/sky/strategy.args), using upstream queue allocation
 and Lua initialization. Only one custom.d entrypoint is installed.
 
+Both selections suppress the upstream built-in strategy with a managed
+`NFQWS2_ENABLE=0` overlay. Otherwise an existing `NFQWS2_ENABLE=1` installation
+would run a second, potentially unfiltered strategy alongside the selected one.
+The original setting and options are retained; uninstall removes the overlay,
+and failed installation restores the previous configuration.
+See the [installer verification record](strategies/sky/evidence/installer-isolation.json)
+for the reproduced two-engine conflict, bootstrap checks and remaining network-test failure.
+
 `shared.txt` restores flat's shared Cloudflare/ECH/CDN host group, including
 `storage.googleapis.com`. It is used by sky's TLS and TTL-limited QUIC profiles.
 YouTube/Anime365 keep their separate QUIC profile; no desync parameters changed.
@@ -76,7 +84,7 @@ tested lifecycle and current updater results, including the remaining limits.
 
 Existing port/packet overrides apply to both strategies. `NFQWS2_Z2B_OPT` and
 `NFQWS2_Z2B_VOICE_FAKE` remain **flat-only**, so old flat options cannot silently
-replace a sky selection. Sky is IPv4-only. Non-Discord TLS profiles still depend on negotiated TCP timestamps.
+replace a sky selection. Sky is IPv4-only. YouTube/Proton/Anime365/shared TLS profiles still depend on negotiated TCP timestamps.
 Native startup validates its arguments with `nfqws2 --dry-run`; Lua execution and
 real client behavior still need runtime verification.
 
@@ -144,11 +152,14 @@ including failures, source revision, and original runtime versions. The
 59/60 body result belongs to the original test image, not an assertion that
 every subsequent Docker rebuild or provider route has identical behavior.
 
-- Discord TLS has its own first-match, hostlisted profile using `tcp_ack=1000`
+- Discord TLS uses a first-match, hostlisted profile using `tcp_ack=1000`
   on Google-SNI fakes. This replaces timestamp-only fooling for the client,
   updater, gateway, CDN, and `discord.media` HTTPS ports. Other service profiles
   remain unchanged; their `tcp_ts` fake still requires negotiated TCP timestamps.
   See [`strategy.args`](strategies/sky/strategy.args).
+- Spotify's `i.scdn.co` image host shares that ACK-based TLS profile. Its TLS
+  handshake stalled without coverage; the scoped profile completed the same JPEG.
+  Other Spotify, GitHub, and Steam hosts are not added to this profile.
 - YouTube and Discord have separate QUIC profiles. HTTP/3 checks prohibit
   fallback to TCP, so a successful HTTPS request is not misreported as QUIC.
 - One TLS 1.2 thumbnail request failed in the five-repeat run. Do not erase
@@ -223,6 +234,22 @@ That fetches the repo and opens the interactive manager, which will offer to
 install the zapret2 base (`v1.0.4`, openwrt-embedded) if it isn't there yet,
 ask for **flat** or **sky**, copy the corresponding assets, and offer to start the
 service. Afterwards, type `zapret2` to reopen the menu.
+
+Fresh-base installation does **not** invoke `install_easy.sh`. The
+[bootstrap](tools/install-base.sh) stages the release under `/opt`, uses upstream
+`install_prereq.sh` and `install_bin.sh`, and registers upstream init/hotplug links.
+The service is registered for boot but remains stopped with the built-in strategy
+disabled until you choose and start a managed strategy. No bootstrap firewall
+restart, offload change, list download or cron job is performed.
+System-wide flow offloading must be disabled before strategy installation; the
+manager refuses an incompatible enabled setting rather than changing it silently.
+Selective zapret offload settings in an existing base remain untouched.
+
+An existing base is reused, never overwritten. A failed fresh installation removes
+its staged/base files and newly created service links; packages already installed
+by the upstream package manager may remain. The
+[OpenWrt Docker bootstrap check](tools/test-base-install.sh) verifies no daemon or
+firewall activation and refusal to overwrite an existing base.
 
 Manual install: copy this folder to the router and run `./service.sh`.
 

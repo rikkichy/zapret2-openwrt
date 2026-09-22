@@ -23,6 +23,7 @@ URLS = {
     'https://i.ytimg.com/vi/jNQXAC9IVRw/hqdefault.jpg': (10000, ('tls12', 'tls13', 'h3')),
     'https://discord.com/': (10000, ('tls12', 'tls13', 'h3')),
     'https://discord.com/api/v10/gateway': (1, ('tls12', 'tls13', 'h3')),
+    'https://i.scdn.co/image/ab67616100005174e2e8e7ff002a4afda1c7147e': (1000, ('https',)),
     'https://anime-365.ru/users/login': (100000, ('https', 'h3')),
     'https://smotret-anime.online/users/login': (100000, ('https', 'h3')),
     'https://proton.me/': (100000, ('tls12', 'tls13')),

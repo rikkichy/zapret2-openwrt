@@ -37,6 +37,27 @@ def run(*args):
     return subprocess.run(args, check=True, text=True, capture_output=True).stdout
 
 
+def check_public_assets():
+    urls = (
+        ('github', 'https://github.com/'),
+        ('steam-avatar', 'https://avatars.steamstatic.com/fef49e7fa7e1997310d705b2a6158ff8dc1cdfeb_full.jpg'),
+        ('spotify-avatar', 'https://image-cdn-fa.spotifycdn.com/image/ab67616100005174e2e8e7ff002a4afda1c7147e'),
+        ('spotify-thumbnail', 'https://i.scdn.co/image/ab67616100005174e2e8e7ff002a4afda1c7147e'),
+    )
+    passed = True
+    for name, url in urls:
+        with tempfile.NamedTemporaryFile() as body:
+            result = subprocess.run(['curl-http3', '-4', '--noproxy', '*', '-fsS',
+                                     '--connect-timeout', '6', '--max-time', '15',
+                                     '-o', body.name, url], capture_output=True, text=True)
+            data = Path(body.name).read_bytes()
+        valid = b'</html>' in data.lower() if name == 'github' else data.startswith(b'\xff\xd8\xff')
+        ok = result.returncode == 0 and valid
+        print(f"{'PASS' if ok else 'FAIL'}: {name}: exit={result.returncode}, bytes={len(data)}, {result.stderr.strip()}", flush=True)
+        passed = passed and ok
+    assert passed, 'Managed strategy must not break GitHub/Steam/Spotify assets'
+
+
 root = Path(tempfile.mkdtemp(prefix='z2b-manager-'))
 root.chmod(0o755)
 base = root / 'base'
@@ -144,7 +165,8 @@ try:
         lua_file.with_suffix('.lua.gz').write_bytes(gzip.compress(lua_file.read_bytes()))
         lua_file.unlink()
     shutil.rmtree(base / 'init.d/openwrt', ignore_errors=True)
-    (base / 'config').write_text((base / 'config.default').read_text() + '\nFWTYPE=nftables\nIFACE_WAN=lima0\nDISABLE_IPV6=0\nWS_USER=nobody\n')
+    # Reproduce an existing upstream install, not just its disabled default.
+    (base / 'config').write_text((base / 'config.default').read_text() + '\nFWTYPE=nftables\nIFACE_WAN=lima0\nDISABLE_IPV6=0\nWS_USER=nobody\nNFQWS2_ENABLE=1\nMODE_FILTER=none\n')
     user_hooks = root / 'user-hook-events'
     with (base / 'config').open('a') as config:
         config.write(f"user_up() {{ echo up >> '{user_hooks}'; }}\nuser_down() {{ echo down >> '{user_hooks}'; }}\nINIT_FW_POST_UP_HOOK=user_up\nINIT_FW_POST_DOWN_HOOK=user_down\n")
@@ -182,6 +204,7 @@ try:
     send('y\n')
     finish_action()
     assert active() == 'sky'
+    check_public_assets()
     one_daemon()
     print('PASS: first setup selects sky and starts one native daemon', flush=True)
     check_dns(True)
@@ -194,7 +217,9 @@ try:
                    stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=20)
     check_dns(True)
     assert user_hooks.read_text().splitlines()[-1] == 'up'
-    print(run('python3', str(REPO / 'tools/test-sky-discord.py')), flush=True)
+    discord_probe = subprocess.run(['python3', str(REPO / 'tools/test-sky-discord.py')],
+                                   capture_output=True, text=True)
+    print(discord_probe.stdout + discord_probe.stderr, flush=True)
     print('PASS: native start/stop installs/removes exact Discord DNS overrides; unrelated names preserved', flush=True)
 
     before = hashlib.sha256(entrypoint.read_bytes()).digest()
@@ -222,6 +247,11 @@ try:
     (base / 'strategies/sky/shared.txt').unlink()
     native_args = base / 'strategies/sky/strategy.args'
     native_args.write_text(native_args.read_text().replace(f'--hostlist={base}/strategies/sky/shared.txt\n', ''))
+    # Migrate the earlier DNS-only overlay without retaining its extra engine.
+    config_file = base / 'config'
+    config_file.write_text(config_file.read_text()
+                           .replace('# BEGIN zapret2-openwrt strategy\nNFQWS2_ENABLE=0\n', '# BEGIN zapret2-openwrt Discord DNS\n')
+                           .replace('# END zapret2-openwrt strategy', '# END zapret2-openwrt Discord DNS'))
     install('2')
     assert active() == 'sky' and youtube.read_text() == edited
     one_daemon()
@@ -279,7 +309,11 @@ try:
     check_dns(False)
     assert not dns_hosts.exists()
     assert not (base / 'strategies/sky/discord-dns.sh').exists()
+    restored = run('sh', '-c', 'ZAPRET_BASE="$1"; . "$1/config"; printf "%s" "$NFQWS2_ENABLE"', 'sh', str(base))
+    assert restored == '1', 'Uninstall must restore the original upstream selection'
     print('PASS: uninstall removes managed runtime and leaves user data intact', flush=True)
+    # Retain network failures, but still exercise rollback and uninstall first.
+    assert discord_probe.returncode == 0, 'Discord network probe failed; see output above'
 finally:
     if ui_pid is not None:
         os.kill(ui_pid, signal.SIGTERM)

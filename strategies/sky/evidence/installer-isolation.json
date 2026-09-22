@@ -1,0 +1,35 @@
+{
+  "measurement_date": "2026-09-22",
+  "router_inspection": {
+    "scope": "Read-only SSH; no configuration writes, installation or service changes on the physical router",
+    "model": "GL.iNet Flint 2 / GL-MT6000",
+    "firmware": "OpenWrt 25.12.5",
+    "retained_config": "NFQWS2_ENABLE=1; MODE_FILTER=none; stock TLS fake uses tcp_md5 and tcp_seq=-10000 without a host filter",
+    "user_observation": "Manager status previously showed two daemons; the user subsequently removed the managed strategy."
+  },
+  "reproduction": "With the stock strategy enabled in a disposable native-install test, the previous manager launched independent nfqws2 instances on queues 300 and 65300. The single-daemon regression failed. Sampled public assets still loaded on this Docker path, so the physical router's website failures are not claimed reproduced.",
+  "change": "A removable managed config block sets NFQWS2_ENABLE=0 for both flat and sky. Original upstream settings remain intact and are restored on uninstall. Older DNS-only blocks are migrated. Spotify i.scdn.co gains narrow TLS coverage separately.",
+  "native_regression": {
+    "passed": [
+      "Exactly one independent daemon after install, switches and rollback",
+      "GitHub completed HTML: 576801 bytes",
+      "Steam avatar completed JPEG: 3409 bytes",
+      "Spotify Fastly avatar and i.scdn.co thumbnail completed JPEGs: 27354 bytes each",
+      "Discord DNS start/stop lifecycle and unrelated DNS preservation",
+      "Current Discord updater manifest, checksum-verified module, and gateway API",
+      "Legacy overlay migration, list-preserving reinstall, persistent command, invalid-profile rollback and uninstall",
+      "Original NFQWS2_ENABLE=1 restored on uninstall",
+      "Native YouTube, Discord API and Anime365 requests completed"
+    ],
+    "full_gate": "FAILED because the unchanged Discord marketing-homepage probe, with TCP timestamps disabled, stalled at 8196 bytes. The same failure occurred in a control using the previous image without the Spotify addition. Lifecycle checks continue before returning this failure; it is not suppressed.",
+    "not_verified": "Current authenticated Discord session, voice/screenshare and physical router forwarding after reinstall"
+  },
+  "fresh_bootstrap": {
+    "upstream_release": "zapret2 v1.0.4 openwrt-embedded",
+    "environment": "Real OpenWrt aarch64 rootfs in an isolated Docker network, procd as PID 1 with normal arguments, APK package manager; standard /var/lock runtime directory supplied",
+    "passed": "Upstream prerequisite handling installed/checks curl and NFQUEUE dependencies; install_bin.sh selected linux-arm64; native init and interface hooks registered; NFQWS2_ENABLE=0; no nfqws2 process and unchanged empty nftables ruleset; existing base refused without changing its config",
+    "check": "tools/test-base-install.sh",
+    "offload_guard": "Real OpenWrt manager refused an enabled system-wide flow-offload setting before installing a custom entrypoint or daemon. The one-off PTY driver's exit wait timed out after observing refusal; its interaction was terminated and the test UCI change reverted.",
+    "limits": "No physical router bootstrap or kernel-module loading validation. Legacy fw3 dispatch uses upstream start_fw/stop_fw/restart_fw APIs and was not exercised on fw3 hardware."
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "measurement_date": "2026-09-22",
+  "scope": "IPv4 HTTPS probes in Docker inside the dedicated Lima vzNAT VM, with router zapret paused by the user. No router or Mac DNS changes.",
+  "reproduction": {
+    "url": "https://i.scdn.co/image/ab67616100005174e2e8e7ff002a4afda1c7147e",
+    "without_container_zapret": "TLS/connect timeout, curl exit 28, no HTTP response",
+    "original_sky": "Same timeout; i.scdn.co was outside the TLS hostlists",
+    "transport_evidence": "Separate plain TCP connections to the resolved Akamai addresses succeeded; the HTTPS request stalled."
+  },
+  "change": "Add only i.scdn.co to the existing ACK-based TLS profile. Discord parameters and DNS workaround remain unchanged. No Spotify-wide or generic CDN catch-all.",
+  "verification": {
+    "canonical_profile": "The retained probe.py HTTPS check passed against the edited strategy.args: HTTP/2 200, 27354 bytes, 87.245.200.11, 0.06524 seconds",
+    "candidate_body": "JPEG signature and SHA-256 1ef058c1813db4470c5cd2511268624177a0c9f22ae6db53705ec2196be17009, identical to the same image through Spotify's working Fastly endpoint"
+  },
+  "other_reported_failures": "Read-only inspection later found NFQWS2_ENABLE=1 with MODE_FILTER=none in the router's retained base config. The user also reported two daemons in manager status. The old installer reproduced two independent engines in Docker; the managed configuration overlay now prevents that conflict. See installer-isolation.json. Sampled GitHub/Steam requests themselves did not fail in Docker before the overlay fix, so their exact router-level failure is not claimed reproduced.",
+  "status": "Spotify coverage and the independent stock-strategy installation conflict are addressed; physical client verification after reinstall remains with the user."
+}
