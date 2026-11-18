@@ -5,15 +5,16 @@ set -e
 REPO="rikkichy/zapret2-openwrt"
 DEST="/tmp/zapret2-openwrt"
 ARCHIVE="/tmp/zapret2-openwrt.tar.gz"
-URL="https://github.com/$REPO/archive/refs/heads/main.tar.gz"
+# Fetch the archive from its serving host without the github.com redirect.
+URL="https://codeload.github.com/$REPO/tar.gz/refs/heads/main"
 
 fetch() {
     if command -v uclient-fetch >/dev/null 2>&1; then
-        uclient-fetch -O "$2" "$1"
+        uclient-fetch -T 10 -O "$2" "$1"
     elif command -v curl >/dev/null 2>&1; then
-        curl -fsSL -o "$2" "$1"
+        curl --connect-timeout 10 --max-time 60 -fsSL -o "$2" "$1"
     elif command -v wget >/dev/null 2>&1; then
-        wget -q -O "$2" "$1"
+        wget -T 10 -O "$2" "$1"
     else
         echo "ERROR: no download tool found (need uclient-fetch, curl, or wget)"
         echo "Run: opkg update && opkg install uclient-fetch"

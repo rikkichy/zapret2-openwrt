@@ -181,7 +181,7 @@ def check_update():
         installer = PERSIST / 'install.sh'
         original = installer.read_text()
         installer.write_text(original.replace(
-            'https://github.com/$REPO/archive/refs/heads/main.tar.gz',
+            'https://codeload.github.com/$REPO/tar.gz/refs/heads/main',
             f'http://127.0.0.1:{server.server_port}/main.tar.gz'))
         assert original != installer.read_text()
         shutil.copytree(PERSIST, bundle)
