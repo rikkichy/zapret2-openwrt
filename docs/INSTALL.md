@@ -22,10 +22,16 @@ uclient-fetch -O- https://raw.githubusercontent.com/rikkichy/zapret2-openwrt/mai
 If `uclient-fetch` is unavailable, use `wget -O-` in its place. Review [the installer](../install.sh) first. For a manual install, copy the complete checkout to the router and run `sh service.sh` in that directory.
 
 1. On a fresh install, accept the zapret2 base setup if needed. Select **flat** or **sky** when prompted.
-2. To update an installed strategy, update the manager, then select **1**. Choose **1** for flat or **2** for sky. Updating the manager alone does not update the installed profiles.
-3. Answer the startup prompt. Declining leaves the service stopped. Reopen the registered manager by running `zapret2`.
+2. Answer the startup prompt. Declining leaves the service stopped.
+3. Reopen the registered manager by running `zapret2`.
 
-Enter retains the current selection. **0** cancels. The manager recognizes a legacy install as flat and keeps it selected until you switch.
+### Update with `u`
+
+If your menu has no **u**, run the installer above once to update the manager. It reuses the installed base. Then open `zapret2`, select **u**, and confirm.
+
+The update downloads the latest bundle from GitHub `main` and refreshes the selected strategy. It does not switch strategies or reinstall the zapret2 base. It preserves edited lists and user overrides. A running service restarts. A stopped service stays stopped. If applying the update fails, the manager attempts to restore the previous bundle and strategy.
+
+Use **1** to choose or reinstall a strategy from the local bundle. Enter retains the current selection. **0** cancels. The manager recognizes a legacy install as flat and keeps it selected until you switch.
 
 The [base bootstrap](../tools/install-base.sh) reuses an existing zapret2 base. For a fresh base, it stages the embedded release and registers upstream startup links without starting the service. It does not restart the firewall, download lists, create cron jobs, or invoke `install_easy.sh`.
 

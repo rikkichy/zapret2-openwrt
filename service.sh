@@ -1,5 +1,8 @@
 #!/bin/sh
 
+# The installer checks this before invoking the non-interactive update entrypoint.
+UPDATE_PROTOCOL=1
+
 SCRIPT_PATH="$0"
 while [ -L "$SCRIPT_PATH" ]; do
     LINK="$(readlink "$SCRIPT_PATH")"
@@ -138,11 +141,21 @@ STRATEGY_FILE="50-zapret2-bypass"
 PERSIST_DIR="/usr/lib/zapret2-openwrt"
 SYMLINK_PATH="/usr/bin/zapret2"
 
+manager_is_registered() {
+    [ -d "$PERSIST_DIR" ] && [ -L "$SYMLINK_PATH" ] &&
+        [ "$(readlink "$SYMLINK_PATH")" = "$PERSIST_DIR/service.sh" ]
+}
+
 register_command() {
-    case "$SCRIPT_DIR" in
-        /tmp/zapret2-openwrt|/tmp/zapret2-openwrt/*) ;;
-        *) return 0 ;;
-    esac
+    local mode="${1:-}"
+    if [ "$mode" = update ]; then
+        manager_is_registered || { print_fail "$(t update_unregistered)"; return 1; }
+    else
+        case "$SCRIPT_DIR" in
+            /tmp/zapret2-openwrt|/tmp/zapret2-openwrt/*) ;;
+            *) return 0 ;;
+        esac
+    fi
 
     print_info "$(t cmd_registering)"
 
@@ -151,6 +164,12 @@ register_command() {
     if ! mkdir "$stage/new" ||
         ! cp -r "$SCRIPT_DIR"/. "$stage/new/" ||
         ! chmod +x "$stage/new/service.sh"; then
+        rm -rf "$stage"
+        print_warn "$(t cmd_register_fail)"
+        return 1
+    fi
+    if [ "$mode" = update ] && [ -f "$LANG_FILE" ] &&
+        ! cp -p "$LANG_FILE" "$stage/new/.lang"; then
         rm -rf "$stage"
         print_warn "$(t cmd_register_fail)"
         return 1
@@ -166,7 +185,16 @@ register_command() {
         print_warn "$(printf "$(t cmd_backup_fmt)" "$stage")"
         return 1
     fi
-    if { [ -e "$SYMLINK_PATH" ] && [ ! -L "$SYMLINK_PATH" ]; } ||
+    if [ "$mode" = update ]; then
+        if ! deploy_strategy preserve; then
+            if mv "$PERSIST_DIR" "$stage/failed" && mv "$stage/old" "$PERSIST_DIR"; then
+                rm -rf "$stage"
+            else
+                print_fail "$(printf "$(t cmd_backup_fmt)" "$stage")"
+            fi
+            return 1
+        fi
+    elif { [ -e "$SYMLINK_PATH" ] && [ ! -L "$SYMLINK_PATH" ]; } ||
         ! ln -sf "$PERSIST_DIR/service.sh" "$SYMLINK_PATH"; then
         print_warn "$(t cmd_register_fail)"
         print_warn "$(printf "$(t cmd_backup_fmt)" "$stage")"
@@ -467,16 +495,22 @@ deploy_strategy() {
         rm -rf "$stage"
         return 1
     fi
-    printf "\n  %s" "$(t start_now_q)"
-    read yn </dev/tty || { rm -rf "$stage"; return 1; }
-    case "$yn" in y|Y|yes|Yes|YES|'') start_now=1 ;; esac
     pidof nfqws2 >/dev/null 2>&1 && was_running=1
-    print_info "$(t stopping)"
-    # Stop while the old entrypoint and options still describe the old firewall.
-    if ! zapret_cmd stop; then
-        print_fail "$(t stop_failed)"
-        rm -rf "$stage"
-        return 1
+    if [ "${1:-}" = preserve ]; then
+        start_now=$was_running
+    else
+        printf "\n  %s" "$(t start_now_q)"
+        read yn </dev/tty || { rm -rf "$stage"; return 1; }
+        case "$yn" in y|Y|yes|Yes|YES|'') start_now=1 ;; esac
+    fi
+    if [ "${1:-}" != preserve ] || [ "$was_running" = 1 ]; then
+        print_info "$(t stopping)"
+        # Stop while the old entrypoint and options still describe the firewall.
+        if ! zapret_cmd stop; then
+            print_fail "$(t stop_failed)"
+            rm -rf "$stage"
+            return 1
+        fi
     fi
     for rel in $assets; do
         mkdir -p "$ZAPRET_BASE/$(dirname "$rel")" &&
@@ -522,6 +556,47 @@ action_install_strategy() {
         deploy_strategy
     fi
     pause_prompt
+}
+
+action_update() {
+    local answer
+    if ! manager_is_registered; then
+        print_fail "$(t update_unregistered)"
+    else
+        case "$ACTIVE_STRATEGY" in
+            flat|sky)
+                printf "\n  %s" "$(t update_confirm)"
+                read answer </dev/tty || return 1
+                case "$answer" in
+                    y|Y|yes|Yes|YES)
+                        print_info "$(t update_fetching)"
+                        if sh "$SCRIPT_DIR/install.sh" --update; then
+                            pause_prompt
+                            exec "$SYMLINK_PATH"
+                        fi
+                        print_fail "$(t update_failed)"
+                        ;;
+                    *) print_info "$(t cancelled)" ;;
+                esac
+                ;;
+            *) print_fail "$(t update_no_strategy)" ;;
+        esac
+    fi
+    pause_prompt
+}
+
+main_update() {
+    LANG_FILE="$PERSIST_DIR/.lang"
+    load_language
+    load_locale
+    detect_zapret_base && detect_custom_d || { print_fail "$(t install_prerequisites)"; return 1; }
+    detect_init_system
+    get_active_strategy
+    case "$ACTIVE_STRATEGY" in
+        flat|sky) SELECTED_STRATEGY="$ACTIVE_STRATEGY" ;;
+        *) print_fail "$(t update_no_strategy)"; return 1 ;;
+    esac
+    register_command update
 }
 
 action_show_active() {
@@ -932,6 +1007,7 @@ main_menu() {
         printf "  ${C_CYAN}%s${C_RESET}\n" "$(t sec_strategy)"
         printf "     1. %s   ${C_CYAN}[%s]${C_RESET}\n" "$(t m_install)" "$ACTIVE_STRATEGY"
         printf "     2. %s\n" "$(t m_show_active)"
+        printf "     u. %s\n" "$(t m_update)"
         printf "\n"
         printf "  ${C_CYAN}%s${C_RESET}\n" "$(t sec_service)"
         printf "     3. %s\n" "$(t m_start)"
@@ -961,6 +1037,7 @@ main_menu() {
         case "$menu_choice" in
             1) action_install_strategy ;;
             2) action_show_active ;;
+            u|U) action_update ;;
             3) action_start ;;
             4) action_stop ;;
             5) action_restart ;;
@@ -973,4 +1050,7 @@ main_menu() {
     done
 }
 
-main_menu
+case "${1:-}" in
+    --update) main_update ;;
+    *) main_menu ;;
+esac

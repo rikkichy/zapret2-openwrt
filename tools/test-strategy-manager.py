@@ -7,6 +7,8 @@ Uses real PTYs, files, nfqws2 and nftables; no mocked service/installer callback
 """
 import gzip
 import hashlib
+from functools import partial
+from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
 import os
 from pathlib import Path
 import pty
@@ -14,7 +16,10 @@ import select
 import shutil
 import signal
 import subprocess
+import sys
+import tarfile
 import tempfile
+from threading import Thread
 import time
 
 REPO = Path('/repo')
@@ -161,6 +166,76 @@ def close_manager():
     ui_pid = ui_fd = None
 
 
+def check_update():
+    # Serve a real archive to the installed downloader. Keep the test offline.
+    bundle = root / 'zapret2-openwrt-main'
+    archive = root / 'main.tar.gz'
+    args = Path('strategies/sky/strategy.args')
+    engine = base / 'nfq2/nfqws2'
+    engine_before = engine.stat().st_ino
+    youtube = base / 'strategies/sky/youtube.txt'
+    youtube.write_text(youtube.read_text() + '\nuser-owned.example\n')
+    edited = youtube.read_bytes()
+
+    with ThreadingHTTPServer(('127.0.0.1', 0), partial(SimpleHTTPRequestHandler, directory=root)) as server:
+        installer = PERSIST / 'install.sh'
+        original = installer.read_text()
+        installer.write_text(original.replace(
+            'https://github.com/$REPO/archive/refs/heads/main.tar.gz',
+            f'http://127.0.0.1:{server.server_port}/main.tar.gz'))
+        assert original != installer.read_text()
+        shutil.copytree(PERSIST, bundle)
+        (bundle / '.lang').unlink()
+        stock = (bundle / args).read_text()
+        thread = Thread(target=server.serve_forever, daemon=True)
+        thread.start()
+
+        def update(options, expected, key='u'):
+            (bundle / args).write_text(options)
+            with tarfile.open(archive, 'w:gz') as tar:
+                tar.add(bundle, arcname=bundle.name)
+            send(key + '\n')
+            expect('Update from GitHub main?')
+            send('y\n')
+            expect(expected)
+            finish_action()
+            assert active() == 'sky' and youtube.read_bytes() == edited
+            assert (PERSIST / '.lang').read_text().strip() == 'en'
+            assert engine.stat().st_ino == engine_before
+
+        try:
+            close_manager()
+            open_manager(COMMAND)
+            expect('Update manager and current strategy')
+            expect('Select option')
+
+            first = stock.replace('--hostlist-domains=gateway.discord.gg,discord.media',
+                                  '--hostlist-domains=gateway.discord.gg,discord.media,update.example')
+            update(first, 'Installed sky')
+            assert 'update.example' in (base / args).read_text()
+            assert (PERSIST / args).read_text() == first
+            one_daemon()
+            check_dns(True)
+            print('PASS: U refreshes the running strategy without replacing the base or edited lists', flush=True)
+
+            update(first + '\n--not-a-real-option\n', 'Update failed')
+            assert (PERSIST / args).read_text() == first
+            assert 'not-a-real-option' not in (base / args).read_text()
+            one_daemon()
+            check_dns(True)
+            print('PASS: invalid update restores both bundles and the running service', flush=True)
+
+            run(str(base / 'init.d/sysv/zapret2'), 'stop')
+            update(first.replace('update.example', 'second-update.example'), 'Installed sky', key='U')
+            assert 'second-update.example' in (base / args).read_text()
+            assert not subprocess.run(['pidof', 'nfqws2'], capture_output=True).stdout
+            check_dns(False)
+            print('PASS: U refreshes a stopped strategy without starting it', flush=True)
+        finally:
+            server.shutdown()
+            thread.join()
+
+
 try:
     shutil.copytree('/opt/zapret2', base)
     # The installed openwrt-embedded release has *.lua.gz, not plain *.lua.
@@ -208,6 +283,9 @@ try:
     send('y\n')
     finish_action()
     assert active() == 'sky'
+    if '--update-only' in sys.argv:
+        check_update()
+        raise SystemExit(0)
     check_public_assets()
     one_daemon()
     print('PASS: first setup selects sky and starts one native daemon', flush=True)
