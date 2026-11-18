@@ -28,13 +28,14 @@ z2b_discord_dns()
 		mkdir -p /tmp/hosts
 		tmp=$(mktemp /tmp/zapret2-sky-discord.XXXXXX)
 		trap 'rm -f "$tmp"' EXIT
-		# ponytail: measured static addresses, matching Flowseal's hosts fix;
-		# revisit this set if routing changes. No wildcard/subdomain override.
+		# ponytail: measured static addresses; revisit if routing changes.
+		# The old apex pool now stalls on TCP, but still serves updater manifests.
 		cat > "$tmp" <<'HOSTS'
-162.159.138.232 discord.com updates.discord.com
-162.159.137.232 discord.com updates.discord.com
-162.159.128.233 discord.com updates.discord.com
-162.159.135.232 discord.com updates.discord.com
+162.159.136.232 discord.com
+162.159.138.232 updates.discord.com
+162.159.137.232 updates.discord.com
+162.159.128.233 updates.discord.com
+162.159.135.232 updates.discord.com
 HOSTS
 		chmod 644 "$tmp"
 		mv -f "$tmp" "$file"

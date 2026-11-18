@@ -63,10 +63,11 @@ profiles without overwriting your existing edited service lists.
 Updating the manager alone does not change the running strategy.
 
 Sky also installs a reversible **Discord DNS override** for exactly `discord.com`
-and `updates.discord.com`. It uses the four reachable addresses in
-[`discord-dns.sh`](strategies/sky/discord-dns.sh), matching Flowseal's hosts
-workaround and avoiding the observed nonresponding address. These are measured
-static addresses, not a guarantee against future routing changes.
+and `updates.discord.com`. The apex uses the only tested address that completed
+HTTPS bodies over TCP on this ISP. The updater keeps its separate address pool.
+All addresses in that pool completed its manifest requests.
+See [`discord-dns.sh`](strategies/sky/discord-dns.sh). These static addresses can
+stop working if routing changes.
 
 The override uses OpenWrt dnsmasq's default `/tmp/hosts` directory and a SIGHUP,
 not a DNS/DHCP restart. Native firewall start/stop hooks add/remove the managed
@@ -79,12 +80,13 @@ connection/address. Clients must use the router's DNS. With a different resolver
 or `ignore_hosts_dir`, configure these two records in that resolver and set
 `NFQWS2_Z2B_DISCORD_DNS=0` in zapret2's config. Sky otherwise refuses startup if
 dnsmasq is not configured to read the hosts directory.
-The [DNS fix verification](strategies/sky/evidence/discord-dns.json) records the
-tested lifecycle and current updater results, including the remaining limits.
+The [original DNS fix verification](strategies/sky/evidence/discord-dns.json)
+records the native hook lifecycle and the earlier address selection.
 
 Existing port/packet overrides apply to both strategies. `NFQWS2_Z2B_OPT` and
 `NFQWS2_Z2B_VOICE_FAKE` remain **flat-only**, so old flat options cannot silently
-replace a sky selection. Sky is IPv4-only. YouTube/Proton/Anime365/shared TLS profiles still depend on negotiated TCP timestamps.
+replace a sky selection. Sky is IPv4-only. The general YouTube, Proton, Anime365
+and shared TLS profile still depends on negotiated TCP timestamps.
 Native startup validates its arguments with `nfqws2 --dry-run`; Lua execution and
 real client behavior still need runtime verification.
 
@@ -152,11 +154,11 @@ including failures, source revision, and original runtime versions. The
 59/60 body result belongs to the original test image, not an assertion that
 every subsequent Docker rebuild or provider route has identical behavior.
 
-- Discord TLS uses a first-match, hostlisted profile using `tcp_ack=1000`
-  on Google-SNI fakes. This replaces timestamp-only fooling for the client,
-  updater, gateway, CDN, and `discord.media` HTTPS ports. Other service profiles
-  remain unchanged; their `tcp_ts` fake still requires negotiated TCP timestamps.
-  See [`strategy.args`](strategies/sky/strategy.args).
+- The first-match Discord Gateway TLS profile adapts Flowseal 1.10.4 ALT11
+  for zapret2 and keeps ACK fooling so that it works without TCP timestamps.
+  Other Discord TLS hosts retain the existing Google-SNI ACK profile.
+- `googlevideo.com` uses its own TCP profile without a fake. The general YouTube
+  profile still handles pages and thumbnails. See [`strategy.args`](strategies/sky/strategy.args).
 - Spotify's `i.scdn.co` image host shares that ACK-based TLS profile. Its TLS
   handshake stalled without coverage; the scoped profile completed the same JPEG.
   Other Spotify, GitHub, and Steam hosts are not added to this profile.

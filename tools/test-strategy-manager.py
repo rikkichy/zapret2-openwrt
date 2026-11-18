@@ -77,8 +77,12 @@ if any(p.exists() for p in (dns_config, dns_hosts, user_hosts)):
 
 
 def check_dns(enabled):
-    expected = {'162.159.138.232', '162.159.137.232', '162.159.128.233', '162.159.135.232'} if enabled else {'162.159.136.232'}
-    for host in ('discord.com', 'updates.discord.com'):
+    upstream = {'162.159.135.232'}
+    for host, local in (
+        ('discord.com', {'162.159.136.232'}),
+        ('updates.discord.com', {'162.159.138.232', '162.159.137.232', '162.159.128.233', '162.159.135.232'}),
+    ):
+        expected = local if enabled else upstream
         deadline = time.monotonic() + 3
         while True:
             answers = set(run('dig', '@127.0.0.1', '+short', '+time=1', '+tries=1', host, 'A').split())
@@ -87,7 +91,7 @@ def check_dns(enabled):
             time.sleep(.05)
         assert answers == expected, (host, answers, expected)
     assert run('dig', '@127.0.0.1', '+short', 'untouched.example', 'A').strip() == '192.0.2.55'
-    assert run('dig', '@127.0.0.1', '+short', 'unlisted.discord.com', 'A').strip() == '162.159.136.232'
+    assert run('dig', '@127.0.0.1', '+short', 'unlisted.discord.com', 'A').strip() == '162.159.135.232'
 
 
 def open_manager(path):
@@ -180,13 +184,13 @@ try:
     (root / 'bin').mkdir()
     run('busybox', '--install', '-s', str(root / 'bin'))
     run('sysctl', '-w', 'net.netfilter.nf_conntrack_tcp_be_liberal=1')
-    # Two real dnsmasq processes: a deterministic bad upstream answer, and the
+    # Two real dnsmasq processes: an upstream address that stalls for discord.com, and the
     # OpenWrt addn-hosts layout. All DNS changes are confined to this container.
     dns_config.parent.mkdir(parents=True, exist_ok=True)
     user_hosts.parent.mkdir(parents=True, exist_ok=True)
     user_hosts.write_text('192.0.2.55 untouched.example\n')
     upstream = root / 'upstream.conf'
-    upstream.write_text('port=1053\nlisten-address=127.0.0.1\nbind-interfaces\nno-resolv\nno-hosts\nserver=127.0.0.53\naddress=/discord.com/162.159.136.232\n')
+    upstream.write_text('port=1053\nlisten-address=127.0.0.1\nbind-interfaces\nno-resolv\nno-hosts\nserver=127.0.0.53\naddress=/discord.com/162.159.135.232\n')
     dns_config.write_text('port=53\nlisten-address=127.0.0.1\nbind-interfaces\nno-resolv\nno-hosts\nserver=127.0.0.1#1053\naddn-hosts=/tmp/hosts\n')
     for config in (upstream, dns_config):
         dns_processes.append(subprocess.Popen(['dnsmasq', '--keep-in-foreground', '--conf-file=' + str(config), '--pid-file=', '--log-facility=-'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL))

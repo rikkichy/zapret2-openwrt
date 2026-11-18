@@ -384,6 +384,9 @@ prepare_strategy() {
             { print_fail "$(printf "$(t file_not_found_fmt)" "$ZAPRET_BASE/$f")"; return 1; }
     done
     if [ "$SELECTED_STRATEGY" = sky ]; then
+        for f in flowseal_stun2.bin flowseal_sferum_tls.bin; do
+            stage_asset "files/fake/$f" "$SCRIPT_DIR/files/fake/$f" || return 1
+        done
         for f in youtube.txt discord.txt proton.txt anime.txt shared.txt; do
             stage_asset "strategies/sky/$f" "$SCRIPT_DIR/strategies/sky/$f" || return 1
         done

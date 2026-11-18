@@ -11,3 +11,7 @@ confirmed working for foreign voice channels on the reference connection.
 zapret2's own `files/fake/quic_initial_www_google_com.bin` is byte-identical to
 Flowseal's Google blob and is a valid substitute if you prefer not to add files
 — set `NFQWS2_Z2B_VOICE_FAKE` to point at it.
+
+Sky uses `flowseal_stun2.bin` and `flowseal_sferum_tls.bin` for the Discord
+Gateway TLS profile. They are byte-identical to `stun2.bin` and
+`tls_clienthello_www_sferum_ru.bin` from [Flowseal 1.10.4](https://github.com/Flowseal/zapret-discord-youtube/releases/tag/1.10.4).
