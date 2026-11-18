@@ -154,9 +154,10 @@ including failures, source revision, and original runtime versions. The
 59/60 body result belongs to the original test image, not an assertion that
 every subsequent Docker rebuild or provider route has identical behavior.
 
-- The first-match Discord Gateway TLS profile adapts Flowseal 1.10.4 ALT11
-  for zapret2 and keeps ACK fooling so that it works without TCP timestamps.
-  Other Discord TLS hosts retain the existing Google-SNI ACK profile.
+- The first-match Discord Gateway and voice signaling TLS profile adapts
+  Flowseal 1.10.4 ALT11 for zapret2. It uses ACK fooling and does not require
+  TCP timestamps. Other Discord TLS hosts retain the existing Google-SNI
+  ACK profile. The voice UDP profile is unchanged.
 - `googlevideo.com` uses its own TCP profile without a fake. The general YouTube
   profile still handles pages and thumbnails. See [`strategy.args`](strategies/sky/strategy.args).
 - Spotify's `i.scdn.co` image host shares that ACK-based TLS profile. Its TLS

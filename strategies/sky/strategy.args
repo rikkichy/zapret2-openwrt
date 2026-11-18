@@ -7,9 +7,9 @@
 --blob=gateway_stun:@/opt/zapret2/files/fake/flowseal_stun2.bin
 --blob=gateway_tls:@/opt/zapret2/files/fake/flowseal_sferum_tls.bin
 --filter-l3=ipv4
---filter-tcp=443
+--filter-tcp=443,2053,2083,2087,2096,8443
 --filter-l7=tls
---hostlist-domains=gateway.discord.gg
+--hostlist-domains=gateway.discord.gg,discord.media
 --out-range=-d10
 --payload=tls_client_hello
 --lua-desync=fake:blob=gateway_stun:tcp_ack=1000:repeats=8
